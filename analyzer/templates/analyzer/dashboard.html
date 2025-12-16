@@ -10,7 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* --- СТИЛІ --- */
         :root {
             --bg-color: #f8f9fc;
             --text-main: #2b2d42;
@@ -47,118 +46,60 @@
             --graph-stroke: #818cf8;
         }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Inter', system-ui, sans-serif;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        .main-header {
-            background: linear-gradient(135deg, #4361ee, #3f37c9);
-            color: white;
-            padding: 3rem 0;
-            margin-bottom: 2rem;
-            border-radius: 0 0 30px 30px;
-            box-shadow: 0 4px 20px rgba(67, 97, 238, 0.3);
-            position: relative;
-        }
-
-        .custom-card {
-            background-color: var(--card-bg);
-            border: var(--card-border);
-            border-radius: 16px;
-            box-shadow: var(--card-shadow);
-            color: var(--text-main);
-            transition: 0.3s;
-        }
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Inter', system-ui, sans-serif; transition: background-color 0.3s, color 0.3s; }
         
-        .quick-btn {
-            display: inline-block;
-            border: 1px solid var(--input-border);
-            background-color: var(--card-bg);
-            color: var(--text-main);
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin: 4px;
-            font-weight: 600;
-            text-decoration: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            user-select: none; /* Щоб не виділявся текст при кліку */
-        }
-        .quick-btn:hover {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-            background-color: var(--input-bg);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .quick-btn:active {
-            transform: translateY(0);
-        }
+        /* HEADER */
+        .main-header { background: linear-gradient(135deg, #4361ee, #3f37c9); color: white; padding: 3rem 0; margin-bottom: 2rem; border-radius: 0 0 30px 30px; box-shadow: 0 4px 20px rgba(67, 97, 238, 0.3); position: relative; }
+        
+        /* CARDS */
+        .custom-card { background-color: var(--card-bg); border: var(--card-border); border-radius: 16px; box-shadow: var(--card-shadow); color: var(--text-main); transition: 0.3s; }
+        
+        /* BUTTONS */
+        .quick-btn { display: inline-block; border: 1px solid var(--input-border); background-color: var(--card-bg); color: var(--text-main); padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; margin: 4px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); user-select: none; }
+        .quick-btn:hover { border-color: var(--primary-color); color: var(--primary-color); background-color: var(--input-bg); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .quick-btn:active { transform: translateY(0); }
 
-        .form-control, .form-select {
-            background-color: var(--input-bg) !important;
-            border: var(--input-border) !important;
-            color: var(--text-main) !important;
-        }
-
-        .search-results {
-            position: absolute; top: 100%; left: 0; right: 0;
-            background-color: var(--search-dropdown-bg);
-            border: 1px solid var(--input-border);
-            border-radius: 0 0 10px 10px;
-            max-height: 250px; overflow-y: auto; z-index: 1000; display: none;
-            color: var(--text-main);
-        }
+        /* FORMS */
+        .form-control, .form-select { background-color: var(--input-bg) !important; border: var(--input-border) !important; color: var(--text-main) !important; }
+        
+        /* SEARCH */
+        .search-results { position: absolute; top: 100%; left: 0; right: 0; background-color: var(--search-dropdown-bg); border: 1px solid var(--input-border); border-radius: 0 0 10px 10px; max-height: 250px; overflow-y: auto; z-index: 1000; display: none; color: var(--text-main); }
         .search-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid var(--input-border); }
         .search-item:hover { background-color: var(--search-hover); }
 
-        .result-card.winner {
-            border: 2px solid var(--accent-color);
-            background: linear-gradient(to right, var(--card-bg), rgba(76, 201, 240, 0.05));
-        }
-        .score-circle {
-            width: 60px; height: 60px; border-radius: 50%;
-            background: var(--bg-color);
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: 1.25rem;
-            color: var(--primary-color);
-            border: 3px solid var(--input-border);
-        }
-        .winner .score-circle {
-            background: var(--primary-color); color: white; border-color: var(--accent-color);
-        }
+        /* RESULTS STYLES */
+        .result-card.winner { border: 2px solid var(--accent-color); background: linear-gradient(to right, var(--card-bg), rgba(76, 201, 240, 0.05)); }
+        .score-circle { width: 60px; height: 60px; border-radius: 50%; background: var(--bg-color); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; color: var(--primary-color); border: 3px solid var(--input-border); }
+        .winner .score-circle { background: var(--primary-color); color: white; border-color: var(--accent-color); }
 
-        .sparkline {
-            fill: none !important;
-            stroke: var(--graph-stroke) !important;
-            stroke-width: 2px;
-            vector-effect: non-scaling-stroke;
-        }
+        /* SPARKLINES (Fixes black blob issue) */
+        .sparkline { fill: none !important; stroke: var(--graph-stroke) !important; stroke-width: 2px; vector-effect: non-scaling-stroke; }
         .sparkline-up { stroke: #10b981 !important; }
         .sparkline-down { stroke: #ef4444 !important; }
 
         .text-muted { color: var(--text-muted) !important; }
         .text-primary { color: var(--primary-color) !important; }
 
-        .theme-toggle {
-            position: absolute; top: 20px; right: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: none; color: white;
-            width: 40px; height: 40px; border-radius: 50%;
-            cursor: pointer; font-size: 1.2rem;
-            display: flex; align-items: center; justify-content: center;
-            transition: 0.3s;
-            z-index: 1000;
-        }
+        /* THEME TOGGLE */
+        .theme-toggle { position: absolute; top: 20px; right: 20px; background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; transition: 0.3s; z-index: 1000; }
         .theme-toggle:hover { background: rgba(255, 255, 255, 0.4); transform: rotate(15deg); }
 
+        /* LOADING */
         #loadingOverlay { backdrop-filter: blur(5px); animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- 2. СТИЛІ ДЛЯ ДРУКУ (PRINT MODE) --- */
+        @media print {
+            body { background-color: white !important; color: black !important; }
+            .no-print, .main-header, form, .theme-toggle, .btn, #toast-container { display: none !important; }
+            .custom-card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; margin-bottom: 20px !important; }
+            .container { max-width: 100% !important; padding: 0 !important; }
+            h3 { border-bottom: 2px solid #000; padding-bottom: 10px; margin-top: 0 !important; }
+            #printHeader { display: block !important; text-align: center; margin-bottom: 30px; }
+            .collapse { display: block !important; height: auto !important; opacity: 1 !important; }
+            /* Робимо графіки меншими при друці */
+            canvas { max-height: 250px !important; }
+        }
     </style>
 </head>
 <body>
@@ -168,7 +109,13 @@
         <p class="text-white opacity-75">Аналізуємо дані з бірж, малюємо графіки та опитуємо експертів</p>
     </div>
 
-    <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;"></div>
+    <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;"></div>
+
+    <div id="printHeader" style="display:none;">
+        <h1>Інвестиційний Звіт</h1>
+        <p>Згенеровано системою Invest Pro 2.0</p>
+        <hr>
+    </div>
 
     <div class="main-header text-center">
         <button class="theme-toggle" id="themeBtn" title="Змінити тему">☀️</button>
@@ -185,27 +132,22 @@
 
             <div class="custom-card p-4 mb-4">
                 <h4 class="fw-bold mb-3">1. Портфель</h4>
-                
                 <div class="mb-4">
                     {% for category, stocks in catalog.items %}
                     <div class="mb-3">
                         <strong class="text-primary d-block mb-2 small text-uppercase">{{ category }}</strong>
                         <div class="d-flex flex-wrap">
                             {% for stock in stocks %}
-                            <div class="quick-btn" onclick="addTickerSafe('{{ stock.t }}', '{{ stock.n }}')">
-                                + {{ stock.n }}
-                            </div>
+                            <div class="quick-btn" onclick="addTickerSafe('{{ stock.t }}', '{{ stock.n }}')">+ {{ stock.n }}</div>
                             {% endfor %}
                         </div>
                     </div>
                     {% endfor %}
                 </div>
-
                 <div class="position-relative mb-3">
                     <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="Пошук (наприклад: Shell, BMW)..." autocomplete="off">
                     <div id="searchResults" class="search-results shadow"></div>
                 </div>
-
                 <div class="p-3 rounded border" style="background-color: var(--input-bg); border-color: var(--input-border) !important;">
                     <div id="selectedList" class="d-flex flex-wrap gap-2">
                         <span class="text-muted fst-italic small" id="emptyMsg">Портфель порожній...</span>
@@ -215,39 +157,17 @@
 
             <div class="custom-card p-4 mb-5">
                 <h4 class="fw-bold mb-3">2. Стратегія (AHP)</h4>
-                
-                <h6 class="text-muted text-uppercase small fw-bold mb-3">Баланс стратегії</h6>
                 <div class="row g-4 mb-4">
-                    <div class="col-md-4 text-center">
-                        <div class="d-flex justify-content-between fw-bold mb-1"><span>🛡️ Безпека</span><span>Ріст 🚀</span></div>
-                        <input type="range" min="-4" max="4" step="1" name="slider_rp" value="{{ sliders.risk_profit|default:0 }}" class="form-range">
-                    </div>
-                    <div class="col-md-4 text-center">
-                        <div class="d-flex justify-content-between fw-bold mb-1"><span>🛡️ Безпека</span><span>Ціна 🏷️</span></div>
-                        <input type="range" min="-4" max="4" step="1" name="slider_rv" value="{{ sliders.risk_value|default:0 }}" class="form-range">
-                    </div>
-                    <div class="col-md-4 text-center">
-                        <div class="d-flex justify-content-between fw-bold mb-1"><span>🚀 Ріст</span><span>Ціна 🏷️</span></div>
-                        <input type="range" min="-4" max="4" step="1" name="slider_pv" value="{{ sliders.profit_value|default:0 }}" class="form-range">
-                    </div>
+                    <div class="col-md-4 text-center"><div class="d-flex justify-content-between fw-bold mb-1"><span>🛡️ Безпека</span><span>Ріст 🚀</span></div><input type="range" min="-4" max="4" step="1" name="slider_rp" value="{{ sliders.risk_profit|default:0 }}" class="form-range"></div>
+                    <div class="col-md-4 text-center"><div class="d-flex justify-content-between fw-bold mb-1"><span>🛡️ Безпека</span><span>Ціна 🏷️</span></div><input type="range" min="-4" max="4" step="1" name="slider_rv" value="{{ sliders.risk_value|default:0 }}" class="form-range"></div>
+                    <div class="col-md-4 text-center"><div class="d-flex justify-content-between fw-bold mb-1"><span>🚀 Ріст</span><span>Ціна 🏷️</span></div><input type="range" min="-4" max="4" step="1" name="slider_pv" value="{{ sliders.profit_value|default:0 }}" class="form-range"></div>
                 </div>
-
                 <h6 class="text-muted text-uppercase small fw-bold mb-3 border-top pt-3" style="border-color: var(--input-border) !important;">Фактор доходу</h6>
                 <div class="row g-4">
-                    <div class="col-md-4 text-center">
-                        <div class="d-flex justify-content-between fw-bold mb-1"><span>🚀 Ріст</span><span>Дохід 💰</span></div>
-                        <input type="range" min="-4" max="4" step="1" name="slider_pd" value="{{ sliders.profit_div|default:0 }}" class="form-range">
-                    </div>
-                    <div class="col-md-4 text-center">
-                        <div class="d-flex justify-content-between fw-bold mb-1"><span>🛡️ Безпека</span><span>Дохід 💰</span></div>
-                        <input type="range" min="-4" max="4" step="1" name="slider_rd" value="{{ sliders.risk_div|default:0 }}" class="form-range">
-                    </div>
-                    <div class="col-md-4 text-center">
-                        <div class="d-flex justify-content-between fw-bold mb-1"><span>🏷️ Ціна</span><span>Дохід 💰</span></div>
-                        <input type="range" min="-4" max="4" step="1" name="slider_vd" value="{{ sliders.value_div|default:0 }}" class="form-range">
-                    </div>
+                    <div class="col-md-4 text-center"><div class="d-flex justify-content-between fw-bold mb-1"><span>🚀 Ріст</span><span>Дохід 💰</span></div><input type="range" min="-4" max="4" step="1" name="slider_pd" value="{{ sliders.profit_div|default:0 }}" class="form-range"></div>
+                    <div class="col-md-4 text-center"><div class="d-flex justify-content-between fw-bold mb-1"><span>🛡️ Безпека</span><span>Дохід 💰</span></div><input type="range" min="-4" max="4" step="1" name="slider_rd" value="{{ sliders.risk_div|default:0 }}" class="form-range"></div>
+                    <div class="col-md-4 text-center"><div class="d-flex justify-content-between fw-bold mb-1"><span>🏷️ Ціна</span><span>Дохід 💰</span></div><input type="range" min="-4" max="4" step="1" name="slider_vd" value="{{ sliders.value_div|default:0 }}" class="form-range"></div>
                 </div>
-
                 <div class="text-center mt-5">
                     <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow fw-bold">🚀 Аналізувати</button>
                 </div>
@@ -256,17 +176,33 @@
 
         {% if results %}
         <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <h3 class="fw-bold text-center mb-4">Результат Аналізу</h3>
+            <div class="col-lg-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="fw-bold mb-0">Результат Аналізу</h3>
+                    <button onclick="window.print()" class="btn btn-outline-primary no-print">🖨️ Друкувати звіт</button>
+                </div>
                 
-                <div class="custom-card p-4 mb-4">
-                    <h5 class="fw-bold text-center mb-3">Порівняння лідерів 🕸️</h5>
-                    <div style="max-height: 400px; display: flex; justify-content: center;">
-                        <canvas id="radarChart"></canvas>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <div class="custom-card p-4 h-100">
+                            <h5 class="fw-bold text-center mb-3">Порівняння лідерів 🕸️</h5>
+                            <div style="height: 300px; display: flex; justify-content: center;">
+                                <canvas id="radarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="custom-card p-4 h-100">
+                            <h5 class="fw-bold text-center mb-3">Розподіл Бюджету 💰</h5>
+                            <p class="text-center text-muted small">Рекомендована доля в портфелі</p>
+                            <div style="height: 280px; display: flex; justify-content: center; position: relative;">
+                                <canvas id="allocationChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-center flex-wrap mb-4 gap-2 small">
+                <div class="d-flex justify-content-center flex-wrap mb-4 gap-2 small no-print">
                      <span class="badge bg-primary p-2">🛡️ Надійність: {{ weights.Risk }}%</span>
                      <span class="badge bg-success p-2">🚀 Ріст: {{ weights.Profit }}%</span>
                      <span class="badge bg-warning text-dark p-2">🏷️ Вартість: {{ weights.Value }}%</span>
@@ -290,52 +226,29 @@
                                     </span>
                                 </div>
                                 <div class="text-muted small mb-2">{{ item.ticker }} | ${{ item.price }}</div>
-                                
                                 <div style="height: 40px; width: 150px;" class="mb-2">
                                     <svg viewBox="0 0 120 40" class="w-100 h-100"><path d="{{ item.sparkline }}" class="sparkline {% if item.trend >= 0 %}sparkline-up{% else %}sparkline-down{% endif %}"></path></svg>
                                 </div>
-
                                 <div class="d-flex align-items-center gap-2 small">
-                                    <span class="text-muted">Новинний фон:</span>
-                                    <span class="fw-bold" style="color: {% if item.sentiment_score > 0 %}#10b981{% elif item.sentiment_score < 0 %}#ef4444{% else %}gray{% endif %} !important;">
-                                        {{ item.sentiment_text }}
-                                    </span>
-                                    <div class="progress" style="width: 50px; height: 6px;">
-                                        {% if item.sentiment_score > 0 %}
-                                            <div class="progress-bar bg-success" style="width: 100%"></div>
-                                        {% elif item.sentiment_score < 0 %}
-                                            <div class="progress-bar bg-danger" style="width: 100%"></div>
-                                        {% else %}
-                                            <div class="progress-bar bg-secondary" style="width: 50%"></div>
-                                        {% endif %}
-                                    </div>
+                                    <span class="text-muted">Новини:</span>
+                                    <span class="fw-bold" style="color: {% if item.sentiment_score > 0 %}#10b981{% elif item.sentiment_score < 0 %}#ef4444{% else %}gray{% endif %} !important;">{{ item.sentiment_text }}</span>
                                 </div>
                             </div>
 
-                            <div class="text-end">
-                                <div class="mb-2 text-primary small fw-bold p-1 rounded bg-light d-inline-block border">
-                                    👍 Сила: {{ item.reason }}
-                                </div>
+                            <div class="text-end no-print">
+                                <div class="mb-2 text-primary small fw-bold p-1 rounded bg-light d-inline-block border">👍 Сила: {{ item.reason }}</div>
                                 <br>
-                                <button class="btn btn-sm btn-outline-secondary border rounded-pill mt-2" style="font-size:0.8rem;" type="button" data-bs-toggle="collapse" data-bs-target="#det{{ forloop.counter }}">
-                                    Аналітика ▼
-                                </button>
+                                <button class="btn btn-sm btn-outline-secondary border rounded-pill mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#det{{ forloop.counter }}">Аналітика ▼</button>
                             </div>
                         </div>
 
                         <div class="collapse mt-3 pt-3 border-top" id="det{{ forloop.counter }}" style="border-color: var(--input-border) !important;">
                             <div class="alert {% if 'buy' in item.rec_key %}alert-success{% elif 'sell' in item.rec_key %}alert-danger{% else %}alert-secondary{% endif %} py-2 mb-3 d-flex align-items-center">
-                                <span class="fs-5 me-2">
-                                    {% if 'buy' in item.rec_key %}📈{% elif 'sell' in item.rec_key %}📉{% else %}⚖️{% endif %}
-                                </span>
-                                <div>
-                                    <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem;">Думка Wall Street</small>
-                                    <div class="fw-bold">{{ item.expert_opinion }}</div>
-                                </div>
+                                <span class="fs-5 me-2">{% if 'buy' in item.rec_key %}📈{% elif 'sell' in item.rec_key %}📉{% else %}⚖️{% endif %}</span>
+                                <div><small class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem;">Думка Wall Street</small><div class="fw-bold">{{ item.expert_opinion }}</div></div>
                             </div>
-
                             <div class="row text-center small">
-                                <div class="col-3"><span class="d-block text-muted mb-1">Ризик (Beta)</span><strong class="fs-6">{{ item.metrics_display.beta }}</strong></div>
+                                <div class="col-3"><span class="d-block text-muted mb-1">Beta</span><strong class="fs-6">{{ item.metrics_display.beta }}</strong></div>
                                 <div class="col-3"><span class="d-block text-muted mb-1">Маржа</span><strong class="fs-6 text-success">{{ item.metrics_display.profit }}%</strong></div>
                                 <div class="col-3"><span class="d-block text-muted mb-1">P/E</span><strong class="fs-6">{{ item.metrics_display.pe }}</strong></div>
                                 <div class="col-3 border-start" style="border-color: var(--input-border) !important;"><span class="d-block text-muted mb-1">Дивіденди</span><strong class="fs-6 text-primary">{{ item.metrics_display.div }}%</strong></div>
@@ -350,122 +263,77 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- 1. ФУНКЦІЯ ПОВІДОМЛЕНЬ (TOAST) ---
+        // TOAST NOTIFICATIONS 
         window.showNotification = function(message, type='primary') {
             const container = document.getElementById('toast-container');
             const id = 'toast_' + Date.now();
-            
-            // Визначаємо колір фону (Bootstrap класи)
-            // 'success' -> зелений, 'warning' -> жовтий, 'danger' -> червоний
             const bgClass = `text-bg-${type}`;
-            
-            const html = `
-                <div id="${id}" class="toast align-items-center ${bgClass} border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="d-flex">
-                        <div class="toast-body fs-6">
-                            ${message}
-                        </div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('${id}').remove()"></button>
-                    </div>
-                </div>
-            `;
-            
-            // Створюємо елемент і додаємо в контейнер
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = html;
-            container.appendChild(wrapper.firstElementChild);
-            
-            // Автоматичне видалення через 3 секунди
-            setTimeout(() => {
-                const el = document.getElementById(id);
-                if(el) {
-                    el.classList.remove('show'); // Анімація зникнення
-                    setTimeout(() => el.remove(), 500); // Видалення з DOM
-                }
-            }, 3000);
+            const html = `<div id="${id}" class="toast align-items-center ${bgClass} border-0 show" role="alert"><div class="d-flex"><div class="toast-body fs-6">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('${id}').remove()"></button></div></div>`;
+            const wrapper = document.createElement('div'); wrapper.innerHTML = html; container.appendChild(wrapper.firstElementChild);
+            setTimeout(() => { const el = document.getElementById(id); if(el) { el.classList.remove('show'); setTimeout(() => el.remove(), 500); } }, 3000);
         };
 
-        // --- 2. ЕКРАН ЗАВАНТАЖЕННЯ ---
-        document.getElementById('mainForm').addEventListener('submit', function() {
-            document.getElementById('loadingOverlay').style.display = 'block';
-        });
+        // LOADING 
+        document.getElementById('mainForm').addEventListener('submit', function() { document.getElementById('loadingOverlay').style.display = 'block'; });
 
-        // --- 3. ТЕМНА ТЕМА ---
+        // THEME 
         const themeBtn = document.getElementById('themeBtn');
         const htmlElement = document.documentElement;
-        if (localStorage.getItem('theme') === 'dark') {
-            htmlElement.setAttribute('data-theme', 'dark');
-            themeBtn.textContent = '🌙';
-        }
+        if (localStorage.getItem('theme') === 'dark') { htmlElement.setAttribute('data-theme', 'dark'); themeBtn.textContent = '🌙'; }
         themeBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            if (htmlElement.getAttribute('data-theme') === 'dark') {
-                htmlElement.removeAttribute('data-theme');
-                themeBtn.textContent = '☀️';
-                localStorage.setItem('theme', 'light');
-            } else {
-                htmlElement.setAttribute('data-theme', 'dark');
-                themeBtn.textContent = '🌙';
-                localStorage.setItem('theme', 'dark');
-            }
+            if (htmlElement.getAttribute('data-theme') === 'dark') { htmlElement.removeAttribute('data-theme'); themeBtn.textContent = '☀️'; localStorage.setItem('theme', 'light'); }
+            else { htmlElement.setAttribute('data-theme', 'dark'); themeBtn.textContent = '🌙'; localStorage.setItem('theme', 'dark'); }
         });
 
-        // --- 4. ДІАГРАМА ---
+        // CHARTS 
         {% if results %}
-        const ctx = document.getElementById('radarChart');
-        if (ctx) {
-            const topItems = [];
-            {% for item in results|slice:":3" %}
-            topItems.push({
+        const isDark = htmlElement.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#e2e8f0' : '#2b2d42';
+        
+        const names = []; const scores = []; const radarData = [];
+        {% for item in results %}
+            names.push("{{ item.name|escapejs }}");
+            scores.push({{ item.score|stringformat:"f" }});
+            {% if forloop.counter <= 3 %}
+            radarData.push({
                 name: "{{ item.name|escapejs }}",
                 beta: {{ item.metrics_display.beta|stringformat:"f" }},
                 profit: {{ item.metrics_display.profit|stringformat:"f" }},
                 pe: {{ item.metrics_display.pe|stringformat:"f" }},
                 div: {{ item.metrics_display.div|stringformat:"f" }}
             });
-            {% endfor %}
+            {% endif %}
+        {% endfor %}
 
-            const colors = [
-                {b: 'rgba(67, 97, 238, 1)', bg: 'rgba(67, 97, 238, 0.2)'},
-                {b: 'rgba(16, 185, 129, 1)', bg: 'rgba(16, 185, 129, 0.2)'},
-                {b: 'rgba(245, 158, 11, 1)', bg: 'rgba(245, 158, 11, 0.2)'}
-            ];
-            const isDark = htmlElement.getAttribute('data-theme') === 'dark';
-            const textColor = isDark ? '#e2e8f0' : '#2b2d42';
-
-            new Chart(ctx, {
+        const ctxRadar = document.getElementById('radarChart');
+        if (ctxRadar) {
+            const colors = [{b: 'rgba(67, 97, 238, 1)', bg: 'rgba(67, 97, 238, 0.2)'}, {b: 'rgba(16, 185, 129, 1)', bg: 'rgba(16, 185, 129, 0.2)'}, {b: 'rgba(245, 158, 11, 1)', bg: 'rgba(245, 158, 11, 0.2)'}];
+            new Chart(ctxRadar, {
                 type: 'radar',
                 data: {
-                    labels: ['Ризик (Beta)', 'Прибуток (%)', 'Ціна (P/E)', 'Дивіденди (%)'],
-                    datasets: topItems.map((item, i) => ({
-                        label: item.name,
-                        data: [item.beta, item.profit, item.pe, item.div],
-                        borderColor: colors[i].b,
-                        backgroundColor: colors[i].bg,
-                        borderWidth: 2,
-                        pointBackgroundColor: colors[i].b,
-                    }))
+                    labels: ['Ризик', 'Прибуток', 'P/E', 'Дивіденди'],
+                    datasets: radarData.map((item, i) => ({ label: item.name, data: [item.beta, item.profit, item.pe, item.div], borderColor: colors[i] ? colors[i].b : 'gray', backgroundColor: colors[i] ? colors[i].bg : 'rgba(0,0,0,0.1)', borderWidth: 2 }))
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        r: {
-                            grid: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' },
-                            pointLabels: { color: textColor, font: {size: 11, weight: 'bold'} },
-                            ticks: { display: false, backdropColor: 'transparent' }
-                        }
-                    },
-                    plugins: { legend: { labels: { color: textColor } } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, scales: { r: { grid: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }, pointLabels: { color: textColor, font: {size: 11, weight: 'bold'} }, ticks: { display: false } } }, plugins: { legend: { labels: { color: textColor } } } }
+            });
+        }
+
+        const ctxPie = document.getElementById('allocationChart');
+        if (ctxPie) {
+            const totalScore = scores.reduce((a, b) => a + b, 0);
+            const percentages = scores.map(s => ((s / totalScore) * 100).toFixed(1));
+            new Chart(ctxPie, {
+                type: 'doughnut',
+                data: { labels: names, datasets: [{ data: percentages, backgroundColor: ['#4361ee', '#3f37c9', '#4cc9f0', '#f72585', '#7209b7', '#480ca8', '#560bad', '#10b981'], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: textColor } }, tooltip: { callbacks: { label: function(context) { return context.label + ': ' + context.parsed + '% бюджету'; } } } } }
             });
         }
         {% endif %}
 
-        // --- 5. ЛОГІКА ТІКЕРІВ ---
+        // TICKER LOGIC
         const searchInput = document.getElementById('searchInput');
         const searchResults = document.getElementById('searchResults');
         const selectedList = document.getElementById('selectedList');
@@ -477,55 +345,19 @@
 
         window.addTickerSafe = function(ticker, name, animate=true) {
             if (!ticker) return;
-            
-            // --- ПЕРЕВІРКА НА ДУБЛІКАТ ---
-            if (selectedTickers.has(ticker)) {
-                // Викликаємо жовте повідомлення (Warning)
-                showNotification(`⚠️ <b>${name}</b> вже є в портфелі!`, 'warning');
-                
-                // Можна додати візуальний ефект (струс), але повідомлення достатньо
-                return; 
-            }
-
-            // Додаємо
-            selectedTickers.add(ticker);
-            updateHiddenInput();
-            if (emptyMsg) emptyMsg.style.display = 'none';
-
+            if (selectedTickers.has(ticker)) { showNotification(`⚠️ <b>${name}</b> вже є в портфелі!`, 'warning'); return; }
+            selectedTickers.add(ticker); updateHiddenInput(); if (emptyMsg) emptyMsg.style.display = 'none';
             const badge = document.createElement('span');
             badge.className = 'badge bg-white text-dark border p-2 d-flex align-items-center gap-2 shadow-sm';
-            badge.style.backgroundColor = 'var(--badge-bg)';
-            badge.style.color = 'var(--badge-text)';
-            badge.style.borderColor = 'var(--input-border)';
-            
+            badge.style.backgroundColor = 'var(--badge-bg)'; badge.style.color = 'var(--badge-text)'; badge.style.borderColor = 'var(--input-border)';
             if (animate) badge.style.animation = "fadeIn 0.3s";
             badge.innerHTML = `${name} <span style="cursor:pointer; color:#ef4444; font-weight:bold; margin-left:5px;" onclick="removeTicker('${ticker}', this)">✕</span>`;
             selectedList.appendChild(badge);
-
-            // Викликаємо зелене повідомлення (Success), тільки якщо це ручне додавання
-            if (animate) {
-                showNotification(`✅ <b>${name}</b> додано успішно!`, 'success');
-            }
+            if (animate) showNotification(`✅ <b>${name}</b> додано успішно!`, 'success');
         };
-
-        window.removeTicker = function(ticker, element) {
-            selectedTickers.delete(ticker);
-            if (element && element.parentElement) element.parentElement.remove();
-            updateHiddenInput();
-            if (selectedTickers.size === 0 && emptyMsg) emptyMsg.style.display = 'inline';
-        };
-
+        window.removeTicker = function(ticker, element) { selectedTickers.delete(ticker); if (element && element.parentElement) element.parentElement.remove(); updateHiddenInput(); if (selectedTickers.size === 0 && emptyMsg) emptyMsg.style.display = 'inline'; };
         function updateHiddenInput() { hiddenInput.value = Array.from(selectedTickers).join(','); }
-
-        if (hiddenInput.value) {
-            hiddenInput.value.split(',').forEach(t => {
-                const ticker = t.trim();
-                if (ticker) {
-                    const displayName = restoredNames[ticker] || ticker;
-                    addTickerSafe(ticker, displayName, false);
-                }
-            });
-        }
+        if (hiddenInput.value) hiddenInput.value.split(',').forEach(t => { const ticker = t.trim(); if(ticker) { const name = restoredNames[ticker] || ticker; addTickerSafe(ticker, name, false); } });
 
         let timeout = null;
         if (searchInput) {
@@ -549,10 +381,12 @@
                     });
                 }, 300);
             });
-            document.addEventListener('click', (e) => {
-                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) searchResults.style.display = 'none';
-            });
+            document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) searchResults.style.display = 'none'; });
         }
+
+        {% if error_message %}
+            setTimeout(() => { showNotification("{{ error_message }}", "danger"); const overlay = document.getElementById('loadingOverlay'); if(overlay) overlay.style.display = 'none'; }, 500);
+        {% endif %}
     });
     </script>
 </body>

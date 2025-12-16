@@ -1,17 +1,20 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from .utils import InvestmentAHP
-import json # <-- Додайте цей імпорт, якщо його немає
+import json 
 
 def analyze(request):
     engine = InvestmentAHP()
     
     if request.method == "POST":
         tickers_input = request.POST.get('tickers_hidden', '')
-        # Чистимо від зайвих пробілів
         tickers = [t.strip() for t in tickers_input.split(',') if t.strip()]
         
-        if not tickers: tickers = ["AAPL", "MSFT", "KO"]
+        if not tickers:
+             return render(request, "analyzer/dashboard.html", {
+                "catalog": engine.STOCK_CATALOG,
+                "error_message": "Спочатку додайте хоча б одну компанію! 📉"
+            })
 
         try:
             sliders = {
@@ -29,16 +32,13 @@ def analyze(request):
         raw_data = engine.get_stock_data(tickers)
         results = engine.rank_stocks(raw_data, weights)
         
-        # Створюємо словник імен для відновлення красивих назв
-        # { 'AAPL': 'Apple', 'MSFT': 'Microsoft' ... }
+        
         restored_names = {item['ticker']: item['name'] for item in results}
         
         context = {
             "results": results, 
             "sliders": sliders,
-            # Повертаємо чистий рядок тікерів
             "selected_tickers": ",".join(tickers),
-            # Передаємо імена як JSON для JavaScript
             "restored_names_json": json.dumps(restored_names), 
             "catalog": engine.STOCK_CATALOG,
             "weights": {
