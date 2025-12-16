@@ -1,0 +1,14 @@
+:root { --primary-color: #4361ee; --bg-color: #f8f9fc; }
+body { background-color: var(--bg-color); font-family: "Inter", sans-serif; }
+.main-header { background: linear-gradient(135deg, #4361ee, #3f37c9); color: white; padding: 3rem 0; margin-bottom: 2rem; border-radius: 0 0 30px 30px; }
+.custom-card { background: white; border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); transition: 0.3s; }
+.custom-card:hover { transform: translateY(-5px); }
+.winner { border: 2px solid #4cc9f0; background: linear-gradient(to right, #ffffff, #f0f9ff); }
+.score-circle { width: 60px; height: 60px; border-radius: 50%; background: #f8f9fc; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; color: #4361ee; border: 3px solid #e2e8f0; }
+.winner .score-circle { background: #4361ee; color: white; border-color: #4cc9f0; }
+.metric-box { text-align: center; padding: 0 15px; border-right: 1px solid #edf2f7; }
+.metric-box:last-child { border-right: none; }
+.metric-label { display: block; font-size: 0.7rem; text-transform: uppercase; color: #a0aec0; }
+.metric-value { font-weight: 700; font-size: 1.1rem; }
+.category-badge { background-color: #e0e7ff; color: #3730a3; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+input[type=range] { width: 100%; accent-color: #4361ee; }
