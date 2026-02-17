@@ -2,6 +2,7 @@ import numpy as np
 import yfinance as yf
 import requests
 from django.core.cache import cache 
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
 
 class InvestmentAHP:
     STOCK_CATALOG = {
@@ -111,26 +112,37 @@ class InvestmentAHP:
         return "M " + " L ".join(points)
 
     def analyze_news(self, stock_ticker_obj):
-        """Простий аналіз заголовків новин на позитив/негатив"""
+        """Аналіз настрою новин за допомогою VADER (NLP)"""
         try:
             news = stock_ticker_obj.news
             if not news: return 0, "Нейтрально 😐"
             
-            score = 0
-            positive_words = ['up', 'growth', 'profit', 'record', 'gain', 'bull', 'high', 'success', 'buy', 'strong']
-            negative_words = ['down', 'loss', 'drop', 'crash', 'bear', 'low', 'fail', 'sell', 'weak', 'lawsuit']
-
-            for item in news[:5]: 
-                title = item.get('title', '').lower()
-                for w in positive_words: 
-                    if w in title: score += 1
-                for w in negative_words: 
-                    if w in title: score -= 1
+            analyzer = SentimentIntensityAnalyzer()
+            scores = []
             
-            if score >= 2: return score, "Позитив 🟢"
-            if score <= -2: return score, "Негатив 🔴"
-            return score, "Нейтрально 😐"
-        except:
+            for item in news[:7]: # Беремо 7 свіжих новин
+                title = item.get('title', '')
+                if not title: continue
+                
+                # Get VADER compound score (-1.0 to 1.0)
+                vs = analyzer.polarity_scores(title)
+                scores.append(vs['compound'])
+            
+            if not scores: return 0, "Нейтрально 😐"
+            
+            avg_score = sum(scores) / len(scores)
+            
+            # Interpret the score
+            if avg_score >= 0.05:
+                text = "Позитив 🟢" if avg_score < 0.5 else "Супер 🚀"
+            elif avg_score <= -0.05:
+                text = "Негатив 🔴" if avg_score > -0.5 else "Жах 💀"
+            else:
+                text = "Нейтрально 😐"
+                
+            return round(avg_score, 2), text
+        except Exception as e:
+            print(f"Sentiment Error: {e}")
             return 0, "Немає даних"
 
     def get_stock_data(self, tickers):
