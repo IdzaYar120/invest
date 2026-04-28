@@ -1,10 +1,12 @@
 from pathlib import Path
-import os
+import os # ДОДАНО: потрібно для роботи зі шляхами
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-dev-key-recreate-me'
 DEBUG = True
-ALLOWED_HOSTS = ['invest-85ag.onrender.com', 'localhost', '127.0.0.1']
+
+# ЗМІНЕНО: Зірочка дозволяє Render успішно проводити health checks
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -18,6 +20,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', # ДОДАНО: для роздачі CSS/JS на Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -64,5 +67,9 @@ LANGUAGE_CODE = 'uk'
 TIME_ZONE = 'Europe/Kiev'
 USE_I18N = True
 USE_TZ = True
+
 STATIC_URL = 'static/'
+# ДОДАНО: Папка, куди збиратимуться статичні файли при деплої
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') 
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
