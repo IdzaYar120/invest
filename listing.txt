@@ -1,0 +1,1064 @@
+
+
+================================================================================
+Файл: manage.py
+================================================================================
+
+#!/usr/bin/env python
+import os
+import sys
+
+def main():
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'invest_project.settings')
+    try:
+        from django.core.management import execute_from_command_line
+    except ImportError as exc:
+        raise ImportError(
+            "Couldn't import Django. Are you sure it's installed and "
+            "available on your PYTHONPATH environment variable? Did you "
+            "forget to activate a virtual environment?"
+        ) from exc
+    execute_from_command_line(sys.argv)
+
+if __name__ == '__main__':
+    main()
+
+
+================================================================================
+Файл: analyzer\urls.py
+================================================================================
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.analyze, name='home'),
+    path('search/', views.ticker_search, name='ticker_search'), 
+]
+
+================================================================================
+Файл: analyzer\utils.py
+================================================================================
+
+import numpy as np
+import yfinance as yf
+import requests
+from django.core.cache import cache 
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
+
+class InvestmentAHP:
+    STOCK_CATALOG = {
+        '🔥 Топ Світу': [
+            {'t': 'AAPL', 'n': 'Apple'}, {'t': 'MSFT', 'n': 'Microsoft'},
+            {'t': 'NVDA', 'n': 'NVIDIA'}, {'t': 'AMZN', 'n': 'Amazon'},
+            {'t': 'GOOGL', 'n': 'Google'}
+        ],
+        '🚗 Автомобілі': [
+            {'t': 'TSLA', 'n': 'Tesla (Електро)'}, {'t': 'TM', 'n': 'Toyota (Надійність)'},
+            {'t': 'F', 'n': 'Ford'}, {'t': 'RACE', 'n': 'Ferrari'}
+        ],
+        '🍔 Їжа та Напої': [
+            {'t': 'KO', 'n': 'Coca-Cola'}, {'t': 'MCD', 'n': 'McDonald\'s'},
+            {'t': 'PEP', 'n': 'PepsiCo'}, {'t': 'SBUX', 'n': 'Starbucks'}
+        ],
+        '💻 Техніка та IT': [
+            {'t': 'AMD', 'n': 'AMD (Чіпи)'}, {'t': 'INTC', 'n': 'Intel'},
+            {'t': 'SONY', 'n': 'Sony'}, {'t': 'NFLX', 'n': 'Netflix'}
+        ],
+        '🏦 Фінанси': [
+            {'t': 'V', 'n': 'Visa'}, {'t': 'MA', 'n': 'Mastercard'},
+            {'t': 'JPM', 'n': 'J.P. Morgan'}, {'t': 'PYPL', 'n': 'PayPal'}
+        ],
+        '🛢️ Енергія (Дивіденди)': [
+             {'t': 'XOM', 'n': 'Exxon Mobil'}, {'t': 'CVX', 'n': 'Chevron'},
+             {'t': 'SHEL', 'n': 'Shell'}, {'t': 'TTE', 'n': 'TotalEnergies'}
+        ]
+    }
+
+    SECTOR_TRANSLATIONS = {
+        'Technology': 'Технології 💻', 'Financial Services': 'Фінанси 🏦',
+        'Healthcare': 'Медицина 💊', 'Consumer Cyclical': 'Авто/Споживання 🚗',
+        'Consumer Defensive': 'Продукти/Напої 🍔', 'Energy': 'Енергетика ⚡',
+        'Industrials': 'Промисловість 🏭', 'Communication Services': 'Телекомунікації 📡',
+        'Utilities': 'Комунальні послуги 💡', 'Real Estate': 'Нерухомість 🏠',
+        'Basic Materials': 'Сировина 🪨'
+    }
+
+    def search_yahoo_tickers(self, query):
+        """Живий пошук (кешуємо результати пошуку на 1 день)"""
+        cache_key = f"search_query_{query.lower()}"
+        cached_res = cache.get(cache_key)
+        if cached_res: return cached_res
+
+        url = "https://query2.finance.yahoo.com/v1/finance/search"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        params = {'q': query, 'quotesCount': 5, 'newsCount': 0, 'enableFuzzyQuery': False, 'quotesQueryId': 'tss_match_eq_basic'}
+        
+        try:
+            r = requests.get(url, params=params, headers=headers, timeout=5)
+            data = r.json()
+            results = []
+            if 'quotes' in data:
+                for item in data['quotes']:
+                    if item.get('quoteType') == 'EQUITY':
+                        results.append({
+                            'symbol': item['symbol'],
+                            'name': item.get('shortname') or item.get('longname') or item['symbol'],
+                            'exch': item.get('exchDisp', '')
+                        })
+            cache.set(cache_key, results, 86400) 
+            return results
+        except: return []
+
+    def map_slider_to_saaty(self, value):
+        mapping = {
+            -4: 9.0, -3: 7.0, -2: 5.0, -1: 3.0,
+            0: 1.0,
+            1: 1/3.0, 2: 1/5.0, 3: 1/7.0, 4: 1/9.0
+        }
+        return mapping.get(round(value), 1.0)
+
+    def calculate_weights(self, sliders):
+        rp = self.map_slider_to_saaty(sliders.get("risk_profit", 0))
+        rv = self.map_slider_to_saaty(sliders.get("risk_value", 0))
+        rd = self.map_slider_to_saaty(sliders.get("risk_div", 0))   
+        pv = self.map_slider_to_saaty(sliders.get("profit_value", 0))
+        pd = self.map_slider_to_saaty(sliders.get("profit_div", 0))  
+        vd = self.map_slider_to_saaty(sliders.get("value_div", 0))   
+
+        
+        matrix = np.array([
+            [1,    rp,   rv,   rd],
+            [1/rp, 1,    pv,   pd],
+            [1/rv, 1/pv, 1,    vd],
+            [1/rd, 1/pd, 1/vd, 1 ]
+        ])
+        
+        col_sums = matrix.sum(axis=0)
+        return (matrix / col_sums).mean(axis=1)
+
+    def generate_sparkline(self, prices):
+        """Генерує SVG шлях для міні-графіка (Пункт 1)"""
+        if not prices or len(prices) < 2: return ""
+        
+        width, height = 120, 40
+        min_p, max_p = min(prices), max(prices)
+        if min_p == max_p: return f"M 0,{height/2} L {width},{height/2}"
+
+        points = []
+        for i, price in enumerate(prices):
+            x = i * (width / (len(prices) - 1))
+            y = height - ((price - min_p) / (max_p - min_p) * height)
+            points.append(f"{x:.1f},{y:.1f}")
+        
+        return "M " + " L ".join(points)
+
+    def analyze_news(self, stock_ticker_obj):
+        """Аналіз настрою новин за допомогою VADER (NLP)"""
+        try:
+            news = stock_ticker_obj.news
+            if not news: return 0, "Нейтрально 😐"
+            
+            analyzer = SentimentIntensityAnalyzer()
+            scores = []
+            
+            for item in news[:7]: # Беремо 7 свіжих новин
+                title = item.get('title', '')
+                if not title: continue
+                
+                # Get VADER compound score (-1.0 to 1.0)
+                vs = analyzer.polarity_scores(title)
+                scores.append(vs['compound'])
+            
+            if not scores: return 0, "Нейтрально 😐"
+            
+            avg_score = sum(scores) / len(scores)
+            
+            # Interpret the score
+            if avg_score >= 0.05:
+                text = "Позитив 🟢" if avg_score < 0.5 else "Супер 🚀"
+            elif avg_score <= -0.05:
+                text = "Негатив 🔴" if avg_score > -0.5 else "Жах 💀"
+            else:
+                text = "Нейтрально 😐"
+                
+            return round(avg_score, 2), text
+        except Exception as e:
+            print(f"Sentiment Error: {e}")
+            return 0, "Немає даних"
+
+    def get_stock_data(self, tickers):
+        data = []
+        unique_tickers = list(set(tickers))
+        REC_TRANSLATIONS = {'strong_buy': '🔥 Активно купувати', 'buy': '✅ Купувати', 'hold': '✋ Тримати', 'sell': '🔻 Продавати', 'strong_sell': '💀 Активно продавати', 'none': '❓ Немає даних'}
+        
+        for t in unique_tickers:
+            cache_key = f"stock_v4_{t}" 
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                data.append(cached_data)
+                continue
+
+            try:
+                stock = yf.Ticker(t)
+                info = stock.info
+                
+                try:
+                    hist = stock.history(period="1mo")
+                    prices = hist['Close'].tolist()
+                    sparkline_svg = self.generate_sparkline(prices)
+                    trend_pct = ((prices[-1] - prices[0]) / prices[0]) * 100 if len(prices) > 1 else 0
+                except: prices, sparkline_svg, trend_pct = [], "", 0
+
+                sentiment_score, sentiment_text = self.analyze_news(stock)
+
+                sector = info.get("sector", "Other")
+                category = self.SECTOR_TRANSLATIONS.get(sector, "Інше 📦")
+                
+                beta = info.get("beta"); beta = 1.5 if beta is None else beta
+                pe = info.get("trailingPE"); pe = 50.0 if pe is None else pe
+                profit = info.get("profitMargins"); profit = 0.0 if profit is None else profit
+                div_yield = info.get("dividendYield"); div_yield = 0.0 if div_yield is None else div_yield
+                rec_key = info.get('recommendationKey', 'none')
+
+                stock_obj = {
+                    "ticker": t.upper(), "name": info.get("shortName", t), "category": category,
+                    "price": round(info.get("currentPrice", 0.0), 2),
+                    "beta": beta, "profit": profit, "pe": pe, "div_yield": div_yield,
+                    "sparkline": sparkline_svg, "trend": round(trend_pct, 1),
+                    "expert_opinion": REC_TRANSLATIONS.get(rec_key, 'Невідомо'),
+                    "rec_key": rec_key,
+                    "sentiment_score": sentiment_score, 
+                    "sentiment_text": sentiment_text    
+                }
+                
+                cache.set(cache_key, stock_obj, 3600)
+                data.append(stock_obj)
+            except Exception as e:
+                print(f"Error {t}: {e}")
+                continue
+        return data
+
+    def rank_stocks(self, stock_data, weights):
+        
+        if not stock_data: return []
+        betas = np.array([d["beta"] for d in stock_data])
+        profits = np.array([d["profit"] for d in stock_data])
+        pes = np.array([d["pe"] for d in stock_data])
+        divs = np.array([d["div_yield"] for d in stock_data])
+
+        inv_betas = 1 / (betas + 0.01)
+        norm_risk = inv_betas / inv_betas.sum()
+        clean_profits = np.maximum(profits, 0)
+        norm_profit = clean_profits / (clean_profits.sum() + 0.0001)
+        inv_pes = 1 / (pes + 0.01)
+        norm_pe = inv_pes / inv_pes.sum()
+        norm_div = divs / (divs.sum() + 0.0001)
+
+        metrics_matrix = np.column_stack((norm_risk, norm_profit, norm_pe, norm_div))
+        scores = np.dot(metrics_matrix, weights)
+        
+        results = []
+        for i, item in enumerate(stock_data):
+            score = round(scores[i] * 100, 1)
+            contributions = {
+                "Надійність 🛡️": norm_risk[i] * weights[0],
+                "Ріст 🚀": norm_profit[i] * weights[1],
+                "Дешевизна 🏷️": norm_pe[i] * weights[2],
+                "Дивіденди 💰": norm_div[i] * weights[3]
+            }
+            item["score"] = score
+            item["metrics_display"] = {
+                "beta": round(betas[i], 2),
+                "profit": round(profits[i] * 100, 1),
+                "pe": round(pes[i], 1),
+                "div": round(divs[i] * 100, 2)
+            }
+            item["reason"] = max(contributions, key=contributions.get)
+            results.append(item)
+        return sorted(results, key=lambda x: x["score"], reverse=True)
+
+================================================================================
+Файл: analyzer\views.py
+================================================================================
+
+from django.shortcuts import render
+from django.http import JsonResponse
+from .utils import InvestmentAHP
+import json 
+
+def analyze(request):
+    engine = InvestmentAHP()
+    
+    if request.method == "POST":
+        tickers_input = request.POST.get('tickers_hidden', '')
+        tickers = [t.strip() for t in tickers_input.split(',') if t.strip()]
+        
+        if not tickers:
+             return render(request, "analyzer/dashboard.html", {
+                "catalog": engine.STOCK_CATALOG,
+                "error_message": "Спочатку додайте хоча б одну компанію! 📉"
+            })
+
+        try:
+            sliders = {
+                "risk_profit": float(request.POST.get("slider_rp", 0)),
+                "risk_value": float(request.POST.get("slider_rv", 0)),
+                "profit_value": float(request.POST.get("slider_pv", 0)),
+                "profit_div": float(request.POST.get("slider_pd", 0)),
+                "risk_div": float(request.POST.get("slider_rd", 0)),
+                "value_div": float(request.POST.get("slider_vd", 0)),
+            }
+        except ValueError: 
+            sliders = {k:0 for k in ["risk_profit", "risk_value", "profit_value", "profit_div", "risk_div", "value_div"]}
+
+        weights = engine.calculate_weights(sliders)
+        raw_data = engine.get_stock_data(tickers)
+        results = engine.rank_stocks(raw_data, weights)
+        
+        
+        restored_names = {item['ticker']: item['name'] for item in results}
+        
+        context = {
+            "results": results, 
+            "sliders": sliders,
+            "selected_tickers": ",".join(tickers),
+            "restored_names_json": json.dumps(restored_names), 
+            "catalog": engine.STOCK_CATALOG,
+            "weights": {
+                "Risk": round(weights[0]*100), 
+                "Profit": round(weights[1]*100), 
+                "Value": round(weights[2]*100),
+                "Div": round(weights[3]*100)
+            }
+        }
+        return render(request, "analyzer/dashboard.html", context)
+    
+    return render(request, "analyzer/dashboard.html", {"catalog": engine.STOCK_CATALOG})
+
+def ticker_search(request):
+    query = request.GET.get('q', '')
+    if len(query) < 1: return JsonResponse({'results': []})
+    engine = InvestmentAHP()
+    results = engine.search_yahoo_tickers(query)
+    return JsonResponse({'results': results})
+
+================================================================================
+Файл: analyzer\__init__.py
+================================================================================
+
+
+
+================================================================================
+Файл: analyzer\templates\analyzer\dashboard.html
+================================================================================
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invest Pro 2.0</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- ApexCharts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <style>
+        :root {
+            --bg-color: #f8f9fc;
+            --text-main: #2b2d42;
+            --text-muted: #6c757d;
+            --card-bg: #ffffff;
+            --card-border: 1px solid rgba(0,0,0,0.05);
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            --input-bg: #f8f9fa;
+            --input-border: 1px solid #ced4da;
+            --primary-color: #4361ee;
+            --accent-color: #4cc9f0;
+            --badge-bg: #ffffff;
+            --badge-text: #212529;
+            --search-dropdown-bg: #ffffff;
+            --search-hover: #f8f9fa;
+            --graph-stroke: #4361ee;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --card-bg: #1e293b;
+            --card-border: 1px solid #334155;
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            --input-bg: #0f172a;
+            --input-border: 1px solid #334155;
+            --primary-color: #818cf8;
+            --accent-color: #38bdf8;
+            --badge-bg: #334155;
+            --badge-text: #f8fafc;
+            --search-dropdown-bg: #1e293b;
+            --search-hover: #334155;
+            --graph-stroke: #818cf8;
+        }
+
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Inter', system-ui, sans-serif; transition: background-color 0.3s, color 0.3s; }
+        
+        /* HEADER */
+        .main-header { background: linear-gradient(135deg, #4361ee, #3f37c9); color: white; padding: 3rem 0; margin-bottom: 2rem; border-radius: 0 0 30px 30px; box-shadow: 0 4px 20px rgba(67, 97, 238, 0.3); position: relative; }
+        
+        /* CARDS */
+        .custom-card { background-color: var(--card-bg); border: var(--card-border); border-radius: 16px; box-shadow: var(--card-shadow); color: var(--text-main); transition: 0.3s; }
+        
+        /* BUTTONS */
+        .quick-btn { display: inline-block; border: 1px solid var(--input-border); background-color: var(--card-bg); color: var(--text-main); padding: 8px 15px; border-radius: 20px; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; margin: 4px; font-weight: 600; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); user-select: none; }
+        .quick-btn:hover { border-color: var(--primary-color); color: var(--primary-color); background-color: var(--input-bg); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .quick-btn:active { transform: translateY(0); }
+
+        /* FORMS */
+        .form-control, .form-select { background-color: var(--input-bg) !important; border: var(--input-border) !important; color: var(--text-main) !important; }
+        
+        /* SEARCH */
+        .search-results { position: absolute; top: 100%; left: 0; right: 0; background-color: var(--search-dropdown-bg); border: 1px solid var(--input-border); border-radius: 0 0 10px 10px; max-height: 250px; overflow-y: auto; z-index: 1000; display: none; color: var(--text-main); }
+        .search-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid var(--input-border); }
+        .search-item:hover { background-color: var(--search-hover); }
+
+        /* RESULTS STYLES */
+        .result-card.winner { border: 2px solid var(--accent-color); background: linear-gradient(to right, var(--card-bg), rgba(76, 201, 240, 0.05)); }
+        .score-circle { width: 60px; height: 60px; border-radius: 50%; background: var(--bg-color); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; color: var(--primary-color); border: 3px solid var(--input-border); }
+        .winner .score-circle { background: var(--primary-color); color: white; border-color: var(--accent-color); }
+
+        /* SPARKLINES (Fixes black blob issue) */
+        .sparkline { fill: none !important; stroke: var(--graph-stroke) !important; stroke-width: 2px; vector-effect: non-scaling-stroke; }
+        .sparkline-up { stroke: #10b981 !important; }
+        .sparkline-down { stroke: #ef4444 !important; }
+
+        .text-muted { color: var(--text-muted) !important; }
+        .text-primary { color: var(--primary-color) !important; }
+
+        /* THEME TOGGLE */
+        .theme-toggle { position: absolute; top: 20px; right: 20px; background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; transition: 0.3s; z-index: 1000; }
+        .theme-toggle:hover { background: rgba(255, 255, 255, 0.4); transform: rotate(15deg); }
+
+        /* LOADING */
+        #loadingOverlay { backdrop-filter: blur(5px); animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- 2. СТИЛІ ДЛЯ ДРУКУ (PRINT MODE) --- */
+        @media print {
+            body { background-color: white !important; color: black !important; }
+            .no-print, .main-header, form, .theme-toggle, .btn, #toast-container { display: none !important; }
+            .custom-card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; margin-bottom: 20px !important; }
+            .container { max-width: 100% !important; padding: 0 !important; }
+            h3 { border-bottom: 2px solid #000; padding-bottom: 10px; margin-top: 0 !important; }
+            #printHeader { display: block !important; text-align: center; margin-bottom: 30px; }
+            .collapse { display: block !important; height: auto !important; opacity: 1 !important; }
+            /* Робимо графіки меншими при друці */
+            /* Робимо графіки меншими при друці */
+            canvas { max-height: 250px !important; }
+            .custom-card { page-break-inside: avoid; }
+
+            /* AHP CONTROL STYLES */
+            .ahp-control-wrapper { text-align: center; padding: 10px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; transition: 0.3s; }
+            .ahp-control-wrapper:hover { border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateY(-2px); }
+            
+            .ahp-labels { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 12px; font-size: 0.9rem; align-items: center; }
+            .ahp-status { font-size: 0.8rem; font-weight: 600; color: var(--primary-color); background: rgba(67, 97, 238, 0.1); padding: 2px 8px; border-radius: 4px; opacity: 0; transition: opacity 0.3s; }
+            .ahp-status.visible { opacity: 1; }
+            
+            .ahp-track { display: flex; align-items: center; justify-content: space-between; position: relative; height: 40px; background: var(--card-bg); border-radius: 20px; padding: 4px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); border: 1px solid var(--input-border); }
+            
+            .ahp-btn { 
+                width: 100%; height: 100%; border: none; background: transparent; cursor: pointer; border-radius: 50%; 
+                position: relative; z-index: 2; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;
+                color: var(--text-muted); font-size: 0.7rem; font-weight: bold;
+            }
+            .ahp-btn:hover { background-color: var(--search-hover); color: var(--text-main); }
+            .ahp-btn.active { color: white; transform: scale(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+            
+            /* Background indicator that slides */
+            .ahp-indicator {
+                position: absolute; top: 4px; bottom: 4px; width: calc(100% / 9 - 4px); background: var(--primary-color);
+                border-radius: 50%; transition: left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 1;
+            }
+            
+            .ahp-btn-label { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; text-align:center; padding-top:20vh;">
+        <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status"></div>
+        <h2 class="text-white mt-4 fw-bold">Дякую за очікування... ⏳</h2>
+        <p class="text-white opacity-75">Аналізуємо дані з бірж, малюємо графіки та опитуємо експертів</p>
+    </div>
+
+    <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;"></div>
+
+    <div id="printHeader" style="display:none;">
+        <h1>Інвестиційний Звіт</h1>
+        <p>Згенеровано системою Invest Pro 2.0</p>
+        <hr>
+    </div>
+
+    <div class="main-header text-center">
+        <button class="theme-toggle" id="themeBtn" title="Змінити тему">☀️</button>
+        <div class="container">
+            <h1 class="fw-bold display-5">Invest Pro 2.0 🚀</h1>
+            <p class="opacity-75">Аналіз акцій + Дивіденди + Графіки + AI Sentiment</p>
+        </div>
+    </div>
+
+    <div class="container pb-5">
+        <form method="post" id="mainForm">
+            {% csrf_token %}
+            <input type="hidden" name="tickers_hidden" id="tickersHidden" value="{{ selected_tickers }}">
+
+            <div class="custom-card p-4 mb-4">
+                <h4 class="fw-bold mb-3">1. Портфель</h4>
+                <div class="mb-4">
+                    {% for category, stocks in catalog.items %}
+                    <div class="mb-3">
+                        <strong class="text-primary d-block mb-2 small text-uppercase">{{ category }}</strong>
+                        <div class="d-flex flex-wrap">
+                            {% for stock in stocks %}
+                            <div class="quick-btn" onclick="addTickerSafe('{{ stock.t }}', '{{ stock.n }}')">+ {{ stock.n }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="position-relative mb-3">
+                    <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="Пошук (наприклад: Shell, BMW)..." autocomplete="off">
+                    <div id="searchResults" class="search-results shadow"></div>
+                </div>
+                <div class="p-3 rounded border" style="background-color: var(--input-bg); border-color: var(--input-border) !important;">
+                    <div id="selectedList" class="d-flex flex-wrap gap-2">
+                        <span class="text-muted fst-italic small" id="emptyMsg">Портфель порожній...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="custom-card p-4 mb-5">
+                <h4 class="fw-bold mb-3">2. Стратегія (AHP)</h4>
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="ahp-control-wrapper" data-name="slider_rp" data-val="{{ sliders.risk_profit|default:0 }}">
+                            <div class="ahp-labels"><span>🛡️ Безпека</span><span class="ahp-status">Рівнозначно</span><span>Ріст 🚀</span></div>
+                            <div class="ahp-track">
+                                <div class="ahp-indicator"></div>
+                                <!-- Buttons generated by JS -->
+                            </div>
+                            <input type="hidden" name="slider_rp" value="{{ sliders.risk_profit|default:0 }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="ahp-control-wrapper" data-name="slider_rv" data-val="{{ sliders.risk_value|default:0 }}">
+                            <div class="ahp-labels"><span>🛡️ Безпека</span><span class="ahp-status">Рівнозначно</span><span>Ціна 🏷️</span></div>
+                            <div class="ahp-track">
+                                <div class="ahp-indicator"></div>
+                            </div>
+                            <input type="hidden" name="slider_rv" value="{{ sliders.risk_value|default:0 }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="ahp-control-wrapper" data-name="slider_pv" data-val="{{ sliders.profit_value|default:0 }}">
+                            <div class="ahp-labels"><span>🚀 Ріст</span><span class="ahp-status">Рівнозначно</span><span>Ціна 🏷️</span></div>
+                            <div class="ahp-track">
+                                <div class="ahp-indicator"></div>
+                            </div>
+                            <input type="hidden" name="slider_pv" value="{{ sliders.profit_value|default:0 }}">
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="text-muted text-uppercase small fw-bold mb-3 border-top pt-3" style="border-color: var(--input-border) !important;">Фактор доходу</h6>
+                
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="ahp-control-wrapper" data-name="slider_pd" data-val="{{ sliders.profit_div|default:0 }}">
+                            <div class="ahp-labels"><span>🚀 Ріст</span><span class="ahp-status">Рівнозначно</span><span>Дохід 💰</span></div>
+                            <div class="ahp-track">
+                                <div class="ahp-indicator"></div>
+                            </div>
+                            <input type="hidden" name="slider_pd" value="{{ sliders.profit_div|default:0 }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="ahp-control-wrapper" data-name="slider_rd" data-val="{{ sliders.risk_div|default:0 }}">
+                            <div class="ahp-labels"><span>🛡️ Безпека</span><span class="ahp-status">Рівнозначно</span><span>Дохід 💰</span></div>
+                            <div class="ahp-track">
+                                <div class="ahp-indicator"></div>
+                            </div>
+                            <input type="hidden" name="slider_rd" value="{{ sliders.risk_div|default:0 }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="ahp-control-wrapper" data-name="slider_vd" data-val="{{ sliders.value_div|default:0 }}">
+                            <div class="ahp-labels"><span>🏷️ Ціна</span><span class="ahp-status">Рівнозначно</span><span>Дохід 💰</span></div>
+                            <div class="ahp-track">
+                                <div class="ahp-indicator"></div>
+                            </div>
+                            <input type="hidden" name="slider_vd" value="{{ sliders.value_div|default:0 }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-5">
+                    <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow fw-bold">🚀 Аналізувати</button>
+                </div>
+            </div>
+        </form>
+
+        {% if results %}
+        <div class="row justify-content-center">
+            <div class="col-lg-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="fw-bold mb-0">Результат Аналізу</h3>
+                    <div class="d-flex gap-2">
+                         <button onclick="window.print()" class="btn btn-outline-secondary no-print">🖨️ Друкувати / PDF</button>
+                         <button onclick="exportCSV()" class="btn btn-outline-success no-print">📊 Експорт CSV</button>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <div class="custom-card p-4 h-100">
+                            <h5 class="fw-bold text-center mb-3">Порівняння лідерів 🕸️</h5>
+                            <div style="min-height: 350px; display: flex; justify-content: center;">
+                                <div id="radarChart" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="custom-card p-4 h-100">
+                            <h5 class="fw-bold text-center mb-3">Розподіл Бюджету 💰</h5>
+                            <p class="text-center text-muted small">Рекомендована доля в портфелі</p>
+                            <div style="min-height: 350px; display: flex; justify-content: center; position: relative;">
+                                <div id="allocationChart" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-center flex-wrap mb-4 gap-2 small no-print">
+                     <span class="badge bg-primary p-2">🛡️ Надійність: {{ weights.Risk }}%</span>
+                     <span class="badge bg-success p-2">🚀 Ріст: {{ weights.Profit }}%</span>
+                     <span class="badge bg-warning text-dark p-2">🏷️ Вартість: {{ weights.Value }}%</span>
+                     <span class="badge bg-info text-dark p-2">💰 Дивіденди: {{ weights.Div }}%</span>
+                </div>
+
+                {% for item in results %}
+                <div class="custom-card result-card mb-3 {% if forloop.first %}winner{% endif %}">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center flex-wrap">
+                            <div class="me-3 mb-3 mb-md-0 text-center" style="min-width: 80px;">
+                                <div class="score-circle mx-auto">{{ item.score }}</div>
+                                {% if forloop.first %}<div class="badge bg-warning text-dark mt-2 shadow-sm">🏆 Лідер</div>{% endif %}
+                            </div>
+                            
+                            <div class="flex-grow-1 me-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <h4 class="mb-0 fw-bold">{{ item.name }}</h4>
+                                    <span class="text-{% if item.trend >= 0 %}success{% else %}danger{% endif %} small fw-bold bg-light px-2 rounded" style="color: {% if item.trend >= 0 %}#10b981{% else %}#ef4444{% endif %} !important;">
+                                        {% if item.trend > 0 %}▲{% else %}▼{% endif %} {{ item.trend }}%
+                                    </span>
+                                </div>
+                                <div class="text-muted small mb-2">{{ item.ticker }} | ${{ item.price }}</div>
+                                <div style="height: 40px; width: 150px;" class="mb-2">
+                                    <svg viewBox="0 0 120 40" class="w-100 h-100"><path d="{{ item.sparkline }}" class="sparkline {% if item.trend >= 0 %}sparkline-up{% else %}sparkline-down{% endif %}"></path></svg>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 small">
+                                    <span class="text-muted">Новини:</span>
+                                    <span class="fw-bold" style="color: {% if item.sentiment_score > 0 %}#10b981{% elif item.sentiment_score < 0 %}#ef4444{% else %}gray{% endif %} !important;">{{ item.sentiment_text }}</span>
+                                </div>
+                            </div>
+
+                            <div class="text-end no-print">
+                                <div class="mb-2 text-primary small fw-bold p-1 rounded bg-light d-inline-block border">👍 Сила: {{ item.reason }}</div>
+                                <br>
+                                <button class="btn btn-sm btn-outline-secondary border rounded-pill mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#det{{ forloop.counter }}">Аналітика ▼</button>
+                            </div>
+                        </div>
+
+                        <div class="collapse mt-3 pt-3 border-top" id="det{{ forloop.counter }}" style="border-color: var(--input-border) !important;">
+                            <div class="alert {% if 'buy' in item.rec_key %}alert-success{% elif 'sell' in item.rec_key %}alert-danger{% else %}alert-secondary{% endif %} py-2 mb-3 d-flex align-items-center">
+                                <span class="fs-5 me-2">{% if 'buy' in item.rec_key %}📈{% elif 'sell' in item.rec_key %}📉{% else %}⚖️{% endif %}</span>
+                                <div><small class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem;">Думка Wall Street</small><div class="fw-bold">{{ item.expert_opinion }}</div></div>
+                            </div>
+                            <div class="row text-center small">
+                                <div class="col-3"><span class="d-block text-muted mb-1">Beta</span><strong class="fs-6">{{ item.metrics_display.beta }}</strong></div>
+                                <div class="col-3"><span class="d-block text-muted mb-1">Маржа</span><strong class="fs-6 text-success">{{ item.metrics_display.profit }}%</strong></div>
+                                <div class="col-3"><span class="d-block text-muted mb-1">P/E</span><strong class="fs-6">{{ item.metrics_display.pe }}</strong></div>
+                                <div class="col-3 border-start" style="border-color: var(--input-border) !important;"><span class="d-block text-muted mb-1">Дивіденди</span><strong class="fs-6 text-primary">{{ item.metrics_display.div }}%</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // TOAST NOTIFICATIONS 
+        window.showNotification = function(message, type='primary') {
+            const container = document.getElementById('toast-container');
+            const id = 'toast_' + Date.now();
+            const bgClass = `text-bg-${type}`;
+            const html = `<div id="${id}" class="toast align-items-center ${bgClass} border-0 show" role="alert"><div class="d-flex"><div class="toast-body fs-6">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('${id}').remove()"></button></div></div>`;
+            const wrapper = document.createElement('div'); wrapper.innerHTML = html; container.appendChild(wrapper.firstElementChild);
+            setTimeout(() => { const el = document.getElementById(id); if(el) { el.classList.remove('show'); setTimeout(() => el.remove(), 500); } }, 3000);
+        };
+
+        // LOADING 
+        document.getElementById('mainForm').addEventListener('submit', function() { document.getElementById('loadingOverlay').style.display = 'block'; });
+
+        // THEME 
+        const themeBtn = document.getElementById('themeBtn');
+        const htmlElement = document.documentElement;
+        if (localStorage.getItem('theme') === 'dark') { htmlElement.setAttribute('data-theme', 'dark'); themeBtn.textContent = '🌙'; }
+        themeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (htmlElement.getAttribute('data-theme') === 'dark') { htmlElement.removeAttribute('data-theme'); themeBtn.textContent = '☀️'; localStorage.setItem('theme', 'light'); }
+            else { htmlElement.setAttribute('data-theme', 'dark'); themeBtn.textContent = '🌙'; localStorage.setItem('theme', 'dark'); }
+        });
+
+        // CHARTS 
+        // CHART LOGIC (ApexCharts)
+        {% if results %}
+        const isDark = htmlElement.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#e2e8f0' : '#2b2d42';
+        
+        const names = []; const scores = []; const radarData = [];
+        {% for item in results %}
+            names.push("{{ item.name|escapejs }}");
+            scores.push({{ item.score|stringformat:"f" }});
+            {% if forloop.counter <= 3 %}
+            radarData.push({
+                name: "{{ item.name|escapejs }}",
+                data: [
+                    {{ item.metrics_display.beta|stringformat:"f" }}, 
+                    {{ item.metrics_display.profit|stringformat:"f" }}, 
+                    {{ item.metrics_display.pe|stringformat:"f" }}, 
+                    {{ item.metrics_display.div|stringformat:"f" }}
+                ]
+            });
+            {% endif %}
+        {% endfor %}
+
+        // RADAR CHART
+        if (document.querySelector("#radarChart")) {
+            const radarOptions = {
+                series: radarData,
+                chart: {
+                    height: 350,
+                    type: 'radar',
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, sans-serif'
+                },
+                xaxis: {
+                    categories: ['Ризик (Beta)', 'Прибуток (%)', 'P/E', 'Дивіденди (%)'],
+                    labels: {
+                        style: {
+                            colors: [textColor, textColor, textColor, textColor],
+                            fontSize: '11px',
+                            fontWeight: 600
+                        }
+                    }
+                },
+                yaxis: { show: false },
+                stroke: { width: 2 },
+                fill: { opacity: 0.2 },
+                markers: { size: 4 },
+                legend: { labels: { colors: textColor } },
+                theme: { mode: isDark ? 'dark' : 'light' },
+                colors: ['#4361ee', '#10b981', '#f59e0b']
+            };
+            new ApexCharts(document.querySelector("#radarChart"), radarOptions).render();
+        }
+
+        // DONUT CHART
+        if (document.querySelector("#allocationChart")) {
+            const donutOptions = {
+                series: scores,
+                labels: names,
+                chart: {
+                    type: 'donut',
+                    height: 350,
+                    fontFamily: 'Inter, sans-serif'
+                },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '65%',
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: 'Всього',
+                                    color: textColor,
+                                    formatter: function (w) {
+                                        return w.globals.seriesTotals.reduce((a, b) => a + b, 0).toFixed(0);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                dataLabels: { enabled: false },
+                legend: { position: 'bottom', labels: { colors: textColor } },
+                theme: { mode: isDark ? 'dark' : 'light' },
+                tooltip: {
+                    y: {
+                        formatter: function(val) {
+                            return val + " балів";
+                        }
+                    }
+                }
+            };
+            new ApexCharts(document.querySelector("#allocationChart"), donutOptions).render();
+        }
+
+        // CSV EXPORT
+        window.exportCSV = function() {
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Add BOM for Excel support
+            csvContent += "Ticker,Name,Price,Trend,Sentiment,Action,Expert Opinion,Beta,Profit Margin,P/E,Div Yield,Score,Strength\n";
+            
+            {% for item in results %}
+            csvContent += `{{ item.ticker }},"{{ item.name }}",{{ item.price }},{{ item.trend }},"{{ item.sentiment_text }}","{{ item.rec_key }}","{{ item.expert_opinion }}",{{ item.metrics_display.beta }},{{ item.metrics_display.profit }},{{ item.metrics_display.pe }},{{ item.metrics_display.div }},{{ item.score }},"{{ item.reason }}"\n`;
+            {% endfor %}
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "invest_portfolio.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+        {% endif %}
+
+        // TICKER LOGIC
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        const selectedList = document.getElementById('selectedList');
+        const hiddenInput = document.getElementById('tickersHidden');
+        const emptyMsg = document.getElementById('emptyMsg');
+        const selectedTickers = new Set();
+        let restoredNames = {};
+        try { const rawJson = '{{ restored_names_json|escapejs }}'; if (rawJson) restoredNames = JSON.parse(rawJson); } catch (e) {}
+
+        window.addTickerSafe = function(ticker, name, animate=true) {
+            if (!ticker) return;
+            if (selectedTickers.has(ticker)) { showNotification(`⚠️ <b>${name}</b> вже є в портфелі!`, 'warning'); return; }
+            selectedTickers.add(ticker); updateHiddenInput(); if (emptyMsg) emptyMsg.style.display = 'none';
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-white text-dark border p-2 d-flex align-items-center gap-2 shadow-sm';
+            badge.style.backgroundColor = 'var(--badge-bg)'; badge.style.color = 'var(--badge-text)'; badge.style.borderColor = 'var(--input-border)';
+            if (animate) badge.style.animation = "fadeIn 0.3s";
+            badge.innerHTML = `${name} <span style="cursor:pointer; color:#ef4444; font-weight:bold; margin-left:5px;" onclick="removeTicker('${ticker}', this)">✕</span>`;
+            selectedList.appendChild(badge);
+            if (animate) showNotification(`✅ <b>${name}</b> додано успішно!`, 'success');
+        };
+        window.removeTicker = function(ticker, element) { selectedTickers.delete(ticker); if (element && element.parentElement) element.parentElement.remove(); updateHiddenInput(); if (selectedTickers.size === 0 && emptyMsg) emptyMsg.style.display = 'inline'; };
+        function updateHiddenInput() { hiddenInput.value = Array.from(selectedTickers).join(','); }
+        if (hiddenInput.value) hiddenInput.value.split(',').forEach(t => { const ticker = t.trim(); if(ticker) { const name = restoredNames[ticker] || ticker; addTickerSafe(ticker, name, false); } });
+
+        let timeout = null;
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(timeout);
+                const query = this.value;
+                if (query.length < 2) { searchResults.style.display = 'none'; return; }
+                timeout = setTimeout(() => {
+                    fetch(`/search/?q=${query}`).then(r => r.json()).then(data => {
+                        searchResults.innerHTML = '';
+                        if (data.results.length > 0) {
+                            searchResults.style.display = 'block';
+                            data.results.forEach(item => {
+                                const div = document.createElement('div');
+                                div.className = 'search-item';
+                                div.innerHTML = `<strong>${item.name}</strong> <small class="text-muted">(${item.symbol})</small>`;
+                                div.onclick = () => { addTickerSafe(item.symbol, item.name); searchInput.value = ''; searchResults.style.display = 'none'; };
+                                searchResults.appendChild(div);
+                            });
+                        } else { searchResults.style.display = 'none'; }
+                    });
+                }, 300);
+            });
+            document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) searchResults.style.display = 'none'; });
+        }
+
+        {% if error_message %}
+            setTimeout(() => { showNotification("{{ error_message }}", "danger"); const overlay = document.getElementById('loadingOverlay'); if(overlay) overlay.style.display = 'none'; }, 500);
+        {% endif %}
+
+        // AHP CONTROLS LOGIC
+        const ahpControls = document.querySelectorAll('.ahp-control-wrapper');
+        ahpControls.forEach(control => {
+            const track = control.querySelector('.ahp-track');
+            const indicator = control.querySelector('.ahp-indicator');
+            const hiddenInput = control.querySelector('input[type="hidden"]');
+            const statusLabel = control.querySelector('.ahp-status');
+            const initialVal = parseInt(control.dataset.val);
+            
+            // Create 9 buttons for range -4 to 4
+            for (let i = -4; i <= 4; i++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'ahp-btn';
+                btn.dataset.val = i;
+                
+                // Optional: add visual markers for strength
+                if (i === 0) btn.innerHTML = '●';
+                else if (Math.abs(i) === 4) btn.innerHTML = '⚡';
+                else btn.innerHTML = '•';
+                
+                btn.onclick = () => updateAhpState(i);
+                track.appendChild(btn);
+            }
+
+            const buttons = track.querySelectorAll('.ahp-btn');
+            
+            function updateAhpState(val) {
+                // Update hidden input
+                hiddenInput.value = val;
+                control.dataset.val = val; 
+
+                // Visual updates
+                buttons.forEach(b => b.classList.remove('active'));
+                
+                // Find index (0 to 8) for indicator position
+                const index = val + 4; 
+                indicator.style.left = `calc(${index} * (100% / 9) + 2px)`; // +2px for centering inside padding
+                
+                buttons[index].classList.add('active');
+
+                // Status text logic
+                let text = "Рівнозначно";
+                const leftLabel = control.querySelector('.ahp-labels span:first-child').innerText.split(' ')[1] || "Лівий";
+                const rightLabel = control.querySelector('.ahp-labels span:last-child').innerText.split(' ')[0] || "Правий";
+                
+                if (val < 0) {
+                    const strength = Math.abs(val) >= 3 ? "Значно важливіше" : "Важливіше";
+                    text = `${strength} ${leftLabel}`;
+                    statusLabel.style.color = 'var(--primary-color)';
+                } else if (val > 0) {
+                    const strength = Math.abs(val) >= 3 ? "Значно важливіше" : "Важливіше";
+                    text = `${strength} ${rightLabel}`;
+                    statusLabel.style.color = 'var(--accent-color)';
+                } else {
+                    statusLabel.style.color = 'var(--text-muted)';
+                }
+                
+                statusLabel.innerText = text;
+                statusLabel.classList.add('visible');
+            }
+
+            // Initialize
+            updateAhpState(initialVal);
+        });
+    });
+    </script>
+</body>
+</html>
+
+================================================================================
+Файл: invest_project\settings.py
+================================================================================
+
+from pathlib import Path
+import os
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+SECRET_KEY = 'django-insecure-dev-key-recreate-me'
+DEBUG = True
+ALLOWED_HOSTS = []
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'analyzer',
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'invest_project.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'invest_project.wsgi.application'
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+LANGUAGE_CODE = 'uk'
+TIME_ZONE = 'Europe/Kiev'
+USE_I18N = True
+USE_TZ = True
+STATIC_URL = 'static/'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+================================================================================
+Файл: invest_project\urls.py
+================================================================================
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('analyzer.urls')),
+]
+
+================================================================================
+Файл: invest_project\wsgi.py
+================================================================================
+
+import os
+from django.core.wsgi import get_wsgi_application
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'invest_project.settings')
+application = get_wsgi_application()
+
+
