@@ -183,6 +183,20 @@
                         <span class="text-muted fst-italic small" id="emptyMsg">Портфель порожній...</span>
                     </div>
                 </div>
+
+                <h5 class="fw-bold mt-4 mb-3">Бюджет для інвестування 💰</h5>
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-8">
+                        <input type="number" step="0.01" min="0" class="form-control form-control-lg" name="budget_amount" value="{{ budget_amount|default:'' }}" placeholder="Введіть суму, яку плануєте інвестувати">
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select form-select-lg" name="budget_currency">
+                            <option value="USD" {% if budget_currency == 'USD' %}selected{% endif %}>Долар (USD)</option>
+                            <option value="UAH" {% if budget_currency == 'UAH' %}selected{% endif %}>Гривня (UAH)</option>
+                            <option value="EUR" {% if budget_currency == 'EUR' %}selected{% endif %}>Євро (EUR)</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <div class="custom-card p-4 mb-5">
@@ -320,6 +334,12 @@
                             </div>
 
                             <div class="text-end no-print">
+                                {% if item.allocated_usd %}
+                                <div class="mb-2 text-success small fw-bold p-1 rounded bg-light d-inline-block border text-start">
+                                    🛒 Купити на: ${{ item.allocated_usd }} <br> (~{{ item.shares_to_buy }} акцій)
+                                </div>
+                                <br>
+                                {% endif %}
                                 <div class="mb-2 text-primary small fw-bold p-1 rounded bg-light d-inline-block border">👍 Сила: {{ item.reason }}</div>
                                 <br>
                                 <button class="btn btn-sm btn-outline-secondary border rounded-pill mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#det{{ forloop.counter }}">Аналітика ▼</button>
@@ -471,10 +491,10 @@
         // CSV EXPORT
         window.exportCSV = function() {
             let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Add BOM for Excel support
-            csvContent += "Ticker,Name,Price,Trend,Sentiment,Action,Expert Opinion,Beta,Profit Margin,P/E,Div Yield,Score,Strength\n";
+            csvContent += "Ticker,Name,Price,Trend,Sentiment,Action,Expert Opinion,Beta,Profit Margin,P/E,Div Yield,Score,Strength,Allocated USD,Shares to Buy\n";
             
             {% for item in results %}
-            csvContent += `{{ item.ticker }},"{{ item.name }}",{{ item.price }},{{ item.trend }},"{{ item.sentiment_text }}","{{ item.rec_key }}","{{ item.expert_opinion }}",{{ item.metrics_display.beta }},{{ item.metrics_display.profit }},{{ item.metrics_display.pe }},{{ item.metrics_display.div }},{{ item.score }},"{{ item.reason }}"\n`;
+            csvContent += `{{ item.ticker }},"{{ item.name }}",{{ item.price }},{{ item.trend }},"{{ item.sentiment_text }}","{{ item.rec_key }}","{{ item.expert_opinion }}",{{ item.metrics_display.beta }},{{ item.metrics_display.profit }},{{ item.metrics_display.pe }},{{ item.metrics_display.div }},{{ item.score }},"{{ item.reason }}",{{ item.allocated_usd|default:0 }},{{ item.shares_to_buy|default:0 }}\n`;
             {% endfor %}
             
             const encodedUri = encodeURI(csvContent);

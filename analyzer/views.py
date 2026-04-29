@@ -28,16 +28,38 @@ def analyze(request):
         except ValueError: 
             sliders = {k:0 for k in ["risk_profit", "risk_value", "profit_value", "profit_div", "risk_div", "value_div"]}
 
+        try:
+            budget_amount = float(request.POST.get("budget_amount") or 0)
+            budget_currency = request.POST.get("budget_currency", "USD")
+        except ValueError:
+            budget_amount = 0.0
+            budget_currency = "USD"
+
         weights = engine.calculate_weights(sliders)
         raw_data = engine.get_stock_data(tickers)
         results = engine.rank_stocks(raw_data, weights)
         
+        exchange_rate = engine.get_exchange_rate(budget_currency, "USD")
+        total_budget_usd = budget_amount * exchange_rate
+        
+        if total_budget_usd > 0:
+            for item in results:
+                allocated_usd = total_budget_usd * (item['score'] / 100.0)
+                item['allocated_usd'] = round(allocated_usd, 2)
+                if item['price'] > 0:
+                    item['shares_to_buy'] = round(allocated_usd / item['price'], 4)
+                else:
+                    item['shares_to_buy'] = 0.0
+
         
         restored_names = {item['ticker']: item['name'] for item in results}
         
         context = {
             "results": results, 
             "sliders": sliders,
+            "budget_amount": budget_amount,
+            "budget_currency": budget_currency,
+            "total_budget_usd": round(total_budget_usd, 2) if total_budget_usd > 0 else 0,
             "selected_tickers": ",".join(tickers),
             "restored_names_json": json.dumps(restored_names), 
             "catalog": engine.STOCK_CATALOG,

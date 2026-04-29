@@ -1,7 +1,7 @@
-from django.contrib import admin
-from django.urls import path, include
+from django.urls import path
+from . import views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', include('analyzer.urls')), # Перенаправляє запити на головну сторінку у ваш додаток
+    path('', views.analyze, name='analyze'),
+    path('search/', views.ticker_search, name='ticker_search'),
 ]

@@ -42,6 +42,33 @@ class InvestmentAHP:
         'Basic Materials': 'Сировина 🪨'
     }
 
+    def get_exchange_rate(self, from_currency, to_currency="USD"):
+        """Отримує поточний курс обміну валют через Yahoo Finance."""
+        if from_currency == to_currency:
+            return 1.0
+            
+        cache_key = f"exchange_rate_{from_currency}_{to_currency}"
+        cached_rate = cache.get(cache_key)
+        if cached_rate:
+            return cached_rate
+
+        ticker_symbol = f"{from_currency}{to_currency}=X"
+        try:
+            ticker = yf.Ticker(ticker_symbol)
+            # Fetch 1 day history since info dict is sometimes unreliable for currencies
+            hist = ticker.history(period="1d")
+            if not hist.empty:
+                rate = hist['Close'].iloc[-1]
+                cache.set(cache_key, float(rate), 3600) # Кешуємо на 1 годину
+                return float(rate)
+            return 1.0
+        except Exception as e:
+            print(f"Помилка конвертації валюти {ticker_symbol}: {e}")
+            # Fallback values if API fails
+            fallbacks = {"UAHUSD": 0.025, "EURUSD": 1.08}
+            return fallbacks.get(f"{from_currency}{to_currency}", 1.0)
+
+
     def search_yahoo_tickers(self, query):
         """Живий пошук (кешуємо результати пошуку на 1 день)"""
         cache_key = f"search_query_{query.lower()}"
