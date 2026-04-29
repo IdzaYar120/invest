@@ -1,11 +1,10 @@
 from pathlib import Path
-import os # ДОДАНО: потрібно для роботи зі шляхами
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-dev-key-recreate-me'
 DEBUG = True
 
-# ЗМІНЕНО: Зірочка дозволяє Render успішно проводити health checks
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
