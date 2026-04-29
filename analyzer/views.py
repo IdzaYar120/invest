@@ -35,7 +35,7 @@ def analyze(request):
             budget_amount = 0.0
             budget_currency = "USD"
 
-        weights = engine.calculate_weights(sliders)
+        weights, cr, worst_pair, worst_slider = engine.calculate_weights(sliders)
         raw_data = engine.get_stock_data(tickers)
         results = engine.rank_stocks(raw_data, weights)
         
@@ -68,7 +68,11 @@ def analyze(request):
                 "Profit": round(weights[1]*100), 
                 "Value": round(weights[2]*100),
                 "Div": round(weights[3]*100)
-            }
+            },
+            "cr": round(cr, 2),
+            "is_consistent": cr <= 0.1,
+            "worst_pair": worst_pair,
+            "worst_slider": worst_slider
         }
         return render(request, "analyzer/dashboard.html", context)
     

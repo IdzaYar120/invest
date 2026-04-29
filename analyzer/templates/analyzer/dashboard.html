@@ -103,9 +103,10 @@
             /* Робимо графіки меншими при друці */
             canvas { max-height: 250px !important; }
             .custom-card { page-break-inside: avoid; }
+        }
 
-            /* AHP CONTROL STYLES */
-            .ahp-control-wrapper { text-align: center; padding: 10px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; transition: 0.3s; }
+        /* AHP CONTROL STYLES */
+        .ahp-control-wrapper { text-align: center; padding: 10px; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 12px; transition: 0.3s; }
             .ahp-control-wrapper:hover { border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateY(-2px); }
             
             .ahp-labels { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 12px; font-size: 0.9rem; align-items: center; }
@@ -129,7 +130,6 @@
             }
             
             .ahp-btn-label { font-size: 1.2rem; }
-        }
     </style>
 </head>
 <body>
@@ -201,6 +201,19 @@
 
             <div class="custom-card p-4 mb-5">
                 <h4 class="fw-bold mb-3">2. Стратегія (AHP)</h4>
+                {% if cr is not None and not is_consistent %}
+                <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+                    <span class="fs-4 me-3">⚠️</span>
+                    <div>
+                        <strong>Увага! Низька узгодженість (CR = {{ cr }} > 0.1)</strong><br>
+                        Ваші налаштування стратегії мають логічні суперечності. 
+                        {% if worst_pair %}
+                        Найбільша розбіжність знайдена між параметрами: <strong>{{ worst_pair }}</strong>.
+                        {% endif %}
+                        Це може вплинути на якість аналізу. Будь ласка, перегляньте відповідні повзунки.
+                    </div>
+                </div>
+                {% endif %}
                 <div class="row g-4 mb-4">
                     <div class="col-md-4">
                         <div class="ahp-control-wrapper" data-name="slider_rp" data-val="{{ sliders.risk_profit|default:0 }}">
@@ -564,12 +577,15 @@
 
         // AHP CONTROLS LOGIC
         const ahpControls = document.querySelectorAll('.ahp-control-wrapper');
+        const worstSlider = "{{ worst_slider|default:'' }}";
+
         ahpControls.forEach(control => {
             const track = control.querySelector('.ahp-track');
             const indicator = control.querySelector('.ahp-indicator');
             const hiddenInput = control.querySelector('input[type="hidden"]');
             const statusLabel = control.querySelector('.ahp-status');
             const initialVal = parseInt(control.dataset.val);
+            const sliderName = control.dataset.name;
             
             // Create 9 buttons for range -4 to 4
             for (let i = -4; i <= 4; i++) {
@@ -583,13 +599,16 @@
                 else if (Math.abs(i) === 4) btn.innerHTML = '⚡';
                 else btn.innerHTML = '•';
                 
-                btn.onclick = () => updateAhpState(i);
+                btn.onclick = () => updateAhpState(i, true);
                 track.appendChild(btn);
             }
 
             const buttons = track.querySelectorAll('.ahp-btn');
+            let userChanged = false;
             
-            function updateAhpState(val) {
+            function updateAhpState(val, fromClick=false) {
+                if (fromClick) userChanged = true;
+
                 // Update hidden input
                 hiddenInput.value = val;
                 control.dataset.val = val; 
@@ -603,6 +622,24 @@
                 
                 buttons[index].classList.add('active');
 
+                // Color logic
+                let isWorst = (sliderName === worstSlider) && !userChanged;
+                let isSelected = (val !== 0);
+
+                if (isWorst) {
+                    indicator.style.backgroundColor = '#ef4444'; // Red
+                    control.style.borderColor = '#ef4444';
+                    control.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.4)';
+                } else if (isSelected) {
+                    indicator.style.backgroundColor = '#10b981'; // Green
+                    control.style.borderColor = '#10b981';
+                    control.style.boxShadow = 'none';
+                } else {
+                    indicator.style.backgroundColor = 'var(--primary-color)'; // Default Blue
+                    control.style.borderColor = 'var(--input-border)';
+                    control.style.boxShadow = 'none';
+                }
+
                 // Status text logic
                 let text = "Рівнозначно";
                 const leftLabel = control.querySelector('.ahp-labels span:first-child').innerText.split(' ')[1] || "Лівий";
@@ -611,11 +648,11 @@
                 if (val < 0) {
                     const strength = Math.abs(val) >= 3 ? "Значно важливіше" : "Важливіше";
                     text = `${strength} ${leftLabel}`;
-                    statusLabel.style.color = 'var(--primary-color)';
+                    statusLabel.style.color = isWorst ? '#ef4444' : '#10b981';
                 } else if (val > 0) {
                     const strength = Math.abs(val) >= 3 ? "Значно важливіше" : "Важливіше";
                     text = `${strength} ${rightLabel}`;
-                    statusLabel.style.color = 'var(--accent-color)';
+                    statusLabel.style.color = isWorst ? '#ef4444' : '#10b981';
                 } else {
                     statusLabel.style.color = 'var(--text-muted)';
                 }
@@ -625,7 +662,7 @@
             }
 
             // Initialize
-            updateAhpState(initialVal);
+            updateAhpState(initialVal, false);
         });
     });
     </script>

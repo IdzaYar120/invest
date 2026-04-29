@@ -120,7 +120,36 @@ class InvestmentAHP:
         ])
         
         col_sums = matrix.sum(axis=0)
-        return (matrix / col_sums).mean(axis=1)
+        weights = (matrix / col_sums).mean(axis=1)
+        
+        # Обчислення Consistency Ratio (CR)
+        n = 4
+        ri = 0.90 # Random Index для матриці 4x4
+        lambda_max = np.dot(col_sums, weights)
+        ci = (lambda_max - n) / (n - 1)
+        cr = ci / ri if ri > 0 else 0
+        
+        worst_pair_str = ""
+        worst_slider_name = ""
+        if cr > 0.1:
+            criteria = ["Безпека", "Ріст", "Ціна", "Дохід"]
+            slider_names = [
+                [None, "slider_rp", "slider_rv", "slider_rd"],
+                [None, None, "slider_pv", "slider_pd"],
+                [None, None, None, "slider_vd"],
+                [None, None, None, None]
+            ]
+            max_dev = 0
+            for i in range(4):
+                for j in range(i+1, 4):
+                    eps = matrix[i, j] * (weights[j] / weights[i])
+                    dev = max(eps, 1/eps) if eps > 0 else 0
+                    if dev > max_dev:
+                        max_dev = dev
+                        worst_pair_str = f"«{criteria[i]}» та «{criteria[j]}»"
+                        worst_slider_name = slider_names[i][j]
+        
+        return weights, cr, worst_pair_str, worst_slider_name
 
     def generate_sparkline(self, prices):
         """Генерує SVG шлях для міні-графіка (Пункт 1)"""
