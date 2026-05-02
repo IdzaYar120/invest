@@ -33,13 +33,27 @@ class InvestmentAHP:
         ]
     }
 
+    CRYPTO_CATALOG = {
+        '🥇 Фундамент (Layer 1)': [
+            {'t': 'BTC-USD', 'n': 'Bitcoin'}, {'t': 'ETH-USD', 'n': 'Ethereum'},
+            {'t': 'SOL-USD', 'n': 'Solana'}, {'t': 'ADA-USD', 'n': 'Cardano'}
+        ],
+        '💸 Альткоїни та Мережі': [
+            {'t': 'XRP-USD', 'n': 'XRP'}, {'t': 'DOT-USD', 'n': 'Polkadot'},
+            {'t': 'AVAX-USD', 'n': 'Avalanche'}, {'t': 'LINK-USD', 'n': 'Chainlink'}
+        ],
+        '🐕 Мем-коїни (Високий ризик)': [
+            {'t': 'DOGE-USD', 'n': 'Dogecoin'}, {'t': 'SHIB-USD', 'n': 'Shiba Inu'}
+        ]
+    }
+
     SECTOR_TRANSLATIONS = {
         'Technology': 'Технології 💻', 'Financial Services': 'Фінанси 🏦',
         'Healthcare': 'Медицина 💊', 'Consumer Cyclical': 'Авто/Споживання 🚗',
         'Consumer Defensive': 'Продукти/Напої 🍔', 'Energy': 'Енергетика ⚡',
         'Industrials': 'Промисловість 🏭', 'Communication Services': 'Телекомунікації 📡',
         'Utilities': 'Комунальні послуги 💡', 'Real Estate': 'Нерухомість 🏠',
-        'Basic Materials': 'Сировина 🪨'
+        'Basic Materials': 'Сировина 🪨', 'Cryptocurrency': 'Криптовалюта 🪙'
     }
 
     def get_exchange_rate(self, from_currency, to_currency="USD"):
@@ -69,15 +83,17 @@ class InvestmentAHP:
             return fallbacks.get(f"{from_currency}{to_currency}", 1.0)
 
 
-    def search_yahoo_tickers(self, query):
+    def search_yahoo_tickers(self, query, asset_type='EQUITY'):
         """Живий пошук (кешуємо результати пошуку на 1 день)"""
-        cache_key = f"search_query_{query.lower()}"
+        cache_key = f"search_query_{query.lower()}_{asset_type}"
         cached_res = cache.get(cache_key)
         if cached_res: return cached_res
 
         url = "https://query2.finance.yahoo.com/v1/finance/search"
         headers = {'User-Agent': 'Mozilla/5.0'}
-        params = {'q': query, 'quotesCount': 5, 'newsCount': 0, 'enableFuzzyQuery': False, 'quotesQueryId': 'tss_match_eq_basic'}
+        params = {'q': query, 'quotesCount': 20, 'newsCount': 0, 'enableFuzzyQuery': False}
+        if asset_type == 'EQUITY':
+            params['quotesQueryId'] = 'tss_match_eq_basic'
         
         try:
             r = requests.get(url, params=params, headers=headers, timeout=5)
@@ -85,7 +101,7 @@ class InvestmentAHP:
             results = []
             if 'quotes' in data:
                 for item in data['quotes']:
-                    if item.get('quoteType') == 'EQUITY':
+                    if item.get('quoteType') == asset_type:
                         results.append({
                             'symbol': item['symbol'],
                             'name': item.get('shortname') or item.get('longname') or item['symbol'],
@@ -227,6 +243,8 @@ class InvestmentAHP:
                 sentiment_score, sentiment_text = self.analyze_news(stock)
 
                 sector = info.get("sector", "Other")
+                if info.get("quoteType") == "CRYPTOCURRENCY":
+                    sector = "Cryptocurrency"
                 category = self.SECTOR_TRANSLATIONS.get(sector, "Інше 📦")
                 
                 beta = info.get("beta"); beta = 1.5 if beta is None else beta
@@ -250,6 +268,53 @@ class InvestmentAHP:
                 data.append(stock_obj)
             except Exception as e:
                 print(f"Error {t}: {e}")
+                continue
+        return data
+
+    def get_crypto_data(self, tickers):
+        data = []
+        unique_tickers = list(set(tickers))
+        
+        for t in unique_tickers:
+            cache_key = f"crypto_v1_{t}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                data.append(cached_data)
+                continue
+
+            try:
+                stock = yf.Ticker(t)
+                info = stock.info
+                
+                try:
+                    hist = stock.history(period="1mo")
+                    prices = hist['Close'].tolist()
+                    sparkline_svg = self.generate_sparkline(prices)
+                except: prices, sparkline_svg = [], ""
+                
+                sentiment_score, sentiment_text = self.analyze_news(stock)
+                
+                market_cap = info.get("marketCap", 1)
+                volume = info.get("volume24Hr", info.get("regularMarketVolume", 1))
+                trend_50d = info.get("fiftyDayAverageChangePercent", 0.0) * 100
+                discount = info.get("fiftyTwoWeekHighChangePercent", 0.0) * 100
+                
+                raw_price = info.get("currentPrice", info.get("regularMarketPrice", 0.0))
+                
+                crypto_obj = {
+                    "ticker": t.upper(), "name": info.get("shortName", t), "category": "Криптовалюта 🪙",
+                    "price": raw_price,
+                    "price_display": f"{raw_price:.8f}".rstrip('0').rstrip('.') if raw_price < 0.01 else f"{raw_price:.2f}",
+                    "market_cap": market_cap, "volume": volume, "trend_50d": trend_50d, "discount": discount,
+                    "sparkline": sparkline_svg, "trend": round(trend_50d, 1),
+                    "sentiment_score": sentiment_score, 
+                    "sentiment_text": sentiment_text    
+                }
+                
+                cache.set(cache_key, crypto_obj, 3600)
+                data.append(crypto_obj)
+            except Exception as e:
+                print(f"Error Crypto {t}: {e}")
                 continue
         return data
 
@@ -287,6 +352,55 @@ class InvestmentAHP:
                 "profit": round(profits[i] * 100, 1),
                 "pe": round(pes[i], 1),
                 "div": round(divs[i] * 100, 2)
+            }
+            item["reason"] = max(contributions, key=contributions.get)
+            results.append(item)
+        return sorted(results, key=lambda x: x["score"], reverse=True)
+
+    def rank_crypto(self, crypto_data, weights):
+        if not crypto_data: return []
+        
+        m_caps = np.array([d["market_cap"] for d in crypto_data])
+        vols = np.array([d["volume"] for d in crypto_data])
+        trends = np.array([d["trend_50d"] for d in crypto_data])
+        discounts = np.array([d["discount"] for d in crypto_data])
+        
+        norm_mcap = m_caps / (m_caps.sum() + 0.0001)
+        norm_vol = vols / (vols.sum() + 0.0001)
+        
+        clean_trends = np.maximum(trends, 0)
+        if clean_trends.sum() == 0: 
+            norm_trend = np.ones(len(trends)) / len(trends)
+        else: 
+            norm_trend = clean_trends / (clean_trends.sum() + 0.0001)
+        
+        inv_discount = np.abs(discounts)
+        norm_discount = inv_discount / (inv_discount.sum() + 0.0001)
+
+        metrics_matrix = np.column_stack((norm_mcap, norm_vol, norm_trend, norm_discount))
+        scores = np.dot(metrics_matrix, weights)
+        
+        results = []
+        for i, item in enumerate(crypto_data):
+            score = round(scores[i] * 100, 1)
+            contributions = {
+                "Надійність 🛡️": norm_mcap[i] * weights[0],
+                "Активність 📊": norm_vol[i] * weights[1],
+                "Тенденція 🚀": norm_trend[i] * weights[2],
+                "Знижка 🏷️": norm_discount[i] * weights[3]
+            }
+            item["score"] = score
+            item["metrics_display"] = {
+                "mcap": f"${item['market_cap'] / 1e9:.1f}B" if item['market_cap'] > 1e9 else f"${item['market_cap'] / 1e6:.1f}M",
+                "vol": f"${item['volume'] / 1e9:.1f}B" if item['volume'] > 1e9 else f"${item['volume'] / 1e6:.1f}M",
+                "trend": round(trends[i], 1),
+                "discount": round(discounts[i], 1)
+            }
+            item["metrics_raw"] = {
+                "mcap": round(norm_mcap[i] * 100, 1),
+                "vol": round(norm_vol[i] * 100, 1),
+                "trend": round(norm_trend[i] * 100, 1),
+                "discount": round(norm_discount[i] * 100, 1)
             }
             item["reason"] = max(contributions, key=contributions.get)
             results.append(item)
