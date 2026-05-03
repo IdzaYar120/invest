@@ -1,3 +1,4 @@
+import pandas as pd
 import numpy as np
 import yfinance as yf
 import requests
@@ -255,6 +256,7 @@ class InvestmentAHP:
 
                 stock_obj = {
                     "ticker": t.upper(), "name": info.get("shortName", t), "category": category,
+                    "raw_sector": sector, # Для аналізу концентрації
                     "price": round(info.get("currentPrice", 0.0), 2),
                     "beta": beta, "profit": profit, "pe": pe, "div_yield": div_yield,
                     "sparkline": sparkline_svg, "trend": round(trend_pct, 1),
@@ -405,3 +407,88 @@ class InvestmentAHP:
             item["reason"] = max(contributions, key=contributions.get)
             results.append(item)
         return sorted(results, key=lambda x: x["score"], reverse=True)
+
+    def get_portfolio_analysis(self, tickers):
+        """Проводить глибокий аналіз ризиків: Кореляція та Оптимізація Марковіца (Монте-Карло)."""
+        if len(tickers) < 2:
+            return None
+
+        try:
+            # 1. Отримуємо історичні дані за 1 рік
+            data = yf.download(tickers, period="1y", interval="1d", progress=False)['Close']
+            
+            # Якщо тільки один тікер повернувся (буває при помилках yf), Close буде Series, а не DataFrame
+            if isinstance(data, pd.Series):
+                return None
+            
+            # Видаляємо пропуски
+            data = data.ffill().dropna()
+            if data.empty or len(data.columns) < 2:
+                return None
+
+            # 2. Розраховуємо денні прибутки
+            returns = data.pct_change().dropna()
+            
+            # 3. Кореляційна матриця
+            corr_matrix = returns.corr()
+            correlation_data = {
+                "labels": list(corr_matrix.columns),
+                "values": corr_matrix.values.tolist()
+            }
+
+            # 4. Оптимізація Марковіца (Monte Carlo Simulation)
+            num_portfolios = 2000 # Оптимально для швидкості та точності
+            all_weights = np.zeros((num_portfolios, len(tickers)))
+            ret_arr = np.zeros(num_portfolios)
+            vol_arr = np.zeros(num_portfolios)
+            sharpe_arr = np.zeros(num_portfolios)
+
+            avg_returns = returns.mean() * 252
+            cov_matrix = returns.cov() * 252
+
+            for i in range(num_portfolios):
+                # Випадкові ваги
+                weights = np.array(np.random.random(len(tickers)))
+                weights = weights / np.sum(weights)
+                all_weights[i,:] = weights
+
+                # Очікуваний прибуток
+                ret_arr[i] = np.sum( (avg_returns * weights) )
+
+                # Очікувана волатильність
+                vol_arr[i] = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+
+                # Коефіцієнт Шарпа (ризик-фрі ставка 4%)
+                sharpe_arr[i] = (ret_arr[i] - 0.04) / vol_arr[i]
+
+            # Знаходимо найкращі портфелі
+            max_sharpe_idx = sharpe_arr.argmax()
+            min_vol_idx = vol_arr.argmin()
+
+            markowitz_results = {
+                "max_sharpe": {
+                    "return": round(float(ret_arr[max_sharpe_idx]) * 100, 2),
+                    "volatility": round(float(vol_arr[max_sharpe_idx]) * 100, 2),
+                    "sharpe": round(float(sharpe_arr[max_sharpe_idx]), 2),
+                    "weights": {tickers[i]: round(float(all_weights[max_sharpe_idx, i]) * 100, 1) for i in range(len(tickers))}
+                },
+                "min_vol": {
+                    "return": round(float(ret_arr[min_vol_idx]) * 100, 2),
+                    "volatility": round(float(vol_arr[min_vol_idx]) * 100, 2),
+                    "sharpe": round(float(sharpe_arr[min_vol_idx]), 2),
+                    "weights": {tickers[i]: round(float(all_weights[min_vol_idx, i]) * 100, 1) for i in range(len(tickers))}
+                },
+                "scatter_data": [
+                    {"x": round(float(v) * 100, 2), "y": round(float(r) * 100, 2)} 
+                    for v, r in zip(vol_arr[::10], ret_arr[::10]) 
+                ]
+            }
+
+            return {
+                "correlation": correlation_data,
+                "markowitz": markowitz_results
+            }
+
+        except Exception as e:
+            print(f"Portfolio Analysis Error: {e}")
+            return None

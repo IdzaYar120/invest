@@ -74,6 +74,35 @@ def analyze(request):
             "worst_pair": worst_pair,
             "worst_slider": worst_slider
         }
+
+        # Глибокий аналіз ризиків (Кореляція та Марковіц)
+        risk_analysis = engine.get_portfolio_analysis(tickers)
+        if risk_analysis:
+            # Zip labels and values for easier iteration in template
+            risk_analysis["correlation"]["zipped"] = zip(
+                risk_analysis["correlation"]["labels"], 
+                risk_analysis["correlation"]["values"]
+            )
+            context["risk_analysis"] = risk_analysis
+
+        # Аналіз концентрації в секторах
+        sector_counts = {}
+        for item in results:
+            s = item.get('raw_sector', 'Other')
+            sector_counts[s] = sector_counts.get(s, 0) + (item['score'] / 100)
+        
+        total_score_sum = sum(item['score'] for item in results) / 100
+        sector_stats = []
+        sector_warnings = []
+        for s, score_sum in sector_counts.items():
+            pct = (score_sum / total_score_sum) * 100 if total_score_sum > 0 else 0
+            sector_stats.append({"name": engine.SECTOR_TRANSLATIONS.get(s, s), "pct": round(pct, 1)})
+            if pct > 40 and len(results) > 2:
+                sector_warnings.append(f"Зависока концентрація у секторі <b>{engine.SECTOR_TRANSLATIONS.get(s, s)}</b> ({round(pct,1)}%). Розгляньте диверсифікацію.")
+        
+        context["sector_stats"] = sector_stats
+        context["sector_warnings"] = sector_warnings
+
         return render(request, "analyzer/dashboard.html", context)
     
     return render(request, "analyzer/dashboard.html", {"catalog": engine.STOCK_CATALOG})

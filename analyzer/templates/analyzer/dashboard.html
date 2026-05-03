@@ -337,6 +337,122 @@
                      <span class="badge bg-info text-dark p-2">💰 Дивіденди: {{ weights.Div }}%</span>
                 </div>
 
+                <!-- [NEW] SECTION 3: RISKS & OPTIMIZATION -->
+                <div class="mt-5 mb-5 no-print">
+                    <h3 class="fw-bold mb-4">3. Ризики та Оптимізація 🛡️</h3>
+                    
+                    <div class="row">
+                        <!-- Correlation Matrix -->
+                        <div class="col-md-6 mb-4">
+                            <div class="custom-card p-4 h-100">
+                                <h5 class="fw-bold mb-3">Матриця Кореляції 🧩</h5>
+                                <p class="text-muted small mb-4">Показує, як акції рухаються одна відносно іншої. <br> <b>1.0</b> — повна залежність, <b>0</b> — незалежність.</p>
+                                
+                                {% if risk_analysis.correlation %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm text-center align-middle" style="font-size: 0.8rem; border-collapse: separate; border-spacing: 2px;">
+                                        <thead>
+                                            <tr>
+                                                <th></th>
+                                                {% for label in risk_analysis.correlation.labels %}
+                                                <th class="fw-bold">{{ label }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row_label, row_values in risk_analysis.correlation.zipped %}
+                                            <tr>
+                                                <td class="fw-bold text-start">{{ row_label }}</td>
+                                                {% for val in row_values %}
+                                                <td class="correlation-cell" data-val="{{ val }}">
+                                                    {{ val|floatformat:2 }}
+                                                </td>
+                                                {% endfor %}
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-info small">Додайте принаймні 2 компанії для розрахунку кореляції.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Efficient Frontier / Markowitz -->
+                        <div class="col-md-6 mb-4">
+                            <div class="custom-card p-4 h-100">
+                                <h5 class="fw-bold mb-3">Ефективна Межа (Markowitz) 📈</h5>
+                                <p class="text-muted small mb-4">Симуляція 2000 портфелів. <br> Ми шукаємо точку з найвищим прибутком при найменшому ризику.</p>
+                                
+                                {% if risk_analysis.markowitz %}
+                                <div id="efficientFrontierChart" style="min-height: 250px;"></div>
+                                
+                                <div class="row mt-3 text-center g-2">
+                                    <div class="col-6">
+                                        <div class="p-2 rounded border bg-light">
+                                            <small class="d-block text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Max Sharpe (Оптимум)</small>
+                                            <span class="fw-bold text-success">{{ risk_analysis.markowitz.max_sharpe.return }}% приб.</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-2 rounded border bg-light">
+                                            <small class="d-block text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Min Volatility (Безпека)</small>
+                                            <span class="fw-bold text-primary">{{ risk_analysis.markowitz.min_vol.volatility }}% ризик</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-info small">Недостатньо історичних даних для симуляції.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Sector Concentration -->
+                        <div class="col-md-12">
+                            <div class="custom-card p-4">
+                                <h5 class="fw-bold mb-3">Диверсифікація за Секторами 🏗️</h5>
+                                
+                                <div class="row align-items-center">
+                                    <div class="col-md-7">
+                                        <div class="d-flex flex-wrap gap-3">
+                                            {% for stat in sector_stats %}
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between mb-1 small">
+                                                    <span>{{ stat.name }}</span>
+                                                    <span class="fw-bold">{{ stat.pct }}%</span>
+                                                </div>
+                                                <div class="progress" style="height: 6px;">
+                                                    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ stat.pct }}%"></div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-5">
+                                        {% if sector_warnings %}
+                                            {% for warning in sector_warnings %}
+                                            <div class="alert alert-warning border-0 shadow-sm mb-2" style="font-size: 0.85rem;">
+                                                ⚠️ {{ warning|safe }}
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="alert alert-success border-0 shadow-sm d-flex align-items-center mb-0">
+                                                <span class="fs-4 me-2">✅</span>
+                                                <span class="small">Ваш портфель добре диверсифікований за секторами.</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Existing individual result cards ... -->
+                <h3 class="fw-bold mb-4 mt-5">Детальний аналіз активів</h3>
                 {% for item in results %}
                 <div class="custom-card result-card mb-3 {% if forloop.first %}winner{% endif %}">
                     <div class="card-body p-4">
@@ -536,6 +652,50 @@
             document.body.removeChild(link);
         };
         {% endif %}
+
+        {% if risk_analysis.markowitz %}
+        if (document.querySelector("#efficientFrontierChart")) {
+            const frontierOptions = {
+                series: [{
+                    name: 'Портфелі',
+                    data: {{ risk_analysis.markowitz.scatter_data|safe }}
+                }],
+                chart: {
+                    height: 250,
+                    type: 'scatter',
+                    zoom: { enabled: true, type: 'xy' },
+                    toolbar: { show: false },
+                    fontFamily: 'Inter, sans-serif'
+                },
+                xaxis: {
+                    title: { text: 'Ризик (Волатильність, %)', style: { color: textColor } },
+                    labels: { style: { colors: textColor } }
+                },
+                yaxis: {
+                    title: { text: 'Очікуваний Прибуток (%)', style: { color: textColor } },
+                    labels: { style: { colors: textColor } }
+                },
+                theme: { mode: isDark ? 'dark' : 'light' },
+                colors: ['#4361ee'],
+                markers: { size: 4, opacity: 0.6, strokeWidth: 0 },
+                tooltip: {
+                    x: { formatter: (val) => val + "% ризику" },
+                    y: { formatter: (val) => val + "% прибутку" }
+                }
+            };
+            new ApexCharts(document.querySelector("#efficientFrontierChart"), frontierOptions).render();
+        }
+        {% endif %}
+
+        // CORRELATION HEATMAP COLORS
+        document.querySelectorAll('.correlation-cell').forEach(cell => {
+            const val = parseFloat(cell.dataset.val);
+            const absVal = Math.abs(val);
+            cell.style.backgroundColor = `rgba(67, 97, 238, ${absVal})`;
+            if (absVal > 0.5) cell.style.color = 'white';
+            cell.style.borderRadius = '4px';
+            cell.style.padding = '10px 5px';
+        });
 
         // TICKER LOGIC
         const searchInput = document.getElementById('searchInput');
