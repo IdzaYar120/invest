@@ -141,6 +141,25 @@
 
     <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3 no-print" style="z-index: 1100;"></div>
 
+    <!-- [NEW] TradingView Modal -->
+    <div class="modal fade" id="tvModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content custom-card" style="border: none;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="tvModalTitle">Графік Активу</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="tv_chart_container" style="height: 600px; width: 100%;">
+                        <div class="d-flex justify-content-center align-items-center h-100">
+                            <div class="spinner-border text-primary" role="status"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="printHeader" style="display:none;">
         <h1>Інвестиційний Звіт</h1>
         <p>Згенеровано системою Invest Pro 2.0</p>
@@ -454,7 +473,9 @@
                 <!-- Existing individual result cards ... -->
                 <h3 class="fw-bold mb-4 mt-5">Детальний аналіз активів</h3>
                 {% for item in results %}
-                <div class="custom-card result-card mb-3 {% if forloop.first %}winner{% endif %}">
+                <div class="custom-card result-card mb-3 {% if forloop.first %}winner{% endif %}" 
+                     onclick="openTradingView('{{ item.ticker }}', '{{ item.name|escapejs }}')" 
+                     style="cursor: pointer;">
                     <div class="card-body p-4">
                         <div class="d-flex align-items-center flex-wrap">
                             <div class="me-3 mb-3 mb-md-0 text-center" style="min-width: 80px;">
@@ -488,7 +509,9 @@
                                 {% endif %}
                                 <div class="mb-2 text-primary small fw-bold p-1 rounded bg-light d-inline-block border">👍 Сила: {{ item.reason }}</div>
                                 <br>
-                                <button class="btn btn-sm btn-outline-secondary border rounded-pill mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#det{{ forloop.counter }}">Аналітика ▼</button>
+                                <button class="btn btn-sm btn-outline-secondary border rounded-pill mt-2" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#det{{ forloop.counter }}" 
+                                        onclick="event.stopPropagation()">Аналітика ▼</button>
                             </div>
                         </div>
 
@@ -513,6 +536,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- TradingView Widget BEGIN -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // TOAST NOTIFICATIONS 
@@ -798,7 +823,7 @@
                 indicator.style.left = `calc(${index} * (100% / 9) + 2px)`; // +2px for centering inside padding
                 
                 buttons[index].classList.add('active');
-
+                
                 // Color logic
                 let isWorst = (sliderName === worstSlider) && !userChanged;
                 let isSelected = (val !== 0);
@@ -841,6 +866,50 @@
             // Initialize
             updateAhpState(initialVal, false);
         });
+
+        // [NEW] TradingView Logic
+        window.openTradingView = function(symbol, name) {
+            const modalEl = document.getElementById('tvModal');
+            const modal = new bootstrap.Modal(modalEl);
+            document.getElementById('tvModalTitle').innerText = `Графік: ${name} (${symbol})`;
+            modal.show();
+
+            // Handle widget creation after modal is shown
+            modalEl.addEventListener('shown.bs.modal', function onShown() {
+                modalEl.removeEventListener('shown.bs.modal', onShown);
+                
+                // Clear container
+                document.getElementById('tv_chart_container').innerHTML = '';
+                
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                
+                let tvSymbol = symbol;
+                if (symbol.includes('.')) {
+                    const parts = symbol.split('.');
+                    const s = parts[0];
+                    const ex = parts[1];
+                    const mapping = {'DE': 'XETR', 'PA': 'EURONEXT', 'L': 'LSE', 'MI': 'MIL'};
+                    if (mapping[ex]) tvSymbol = `${mapping[ex]}:${s}`;
+                } else if (!symbol.includes(':')) {
+                    tvSymbol = symbol; 
+                }
+                
+                new TradingView.widget({
+                    "autosize": true,
+                    "symbol": tvSymbol,
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": isDark ? "dark" : "light",
+                    "style": "1",
+                    "locale": "uk",
+                    "toolbar_bg": "#f1f3f6",
+                    "enable_publishing": false,
+                    "hide_side_toolbar": false,
+                    "allow_symbol_change": true,
+                    "container_id": "tv_chart_container"
+                });
+            });
+        };
     });
     </script>
 </body>
