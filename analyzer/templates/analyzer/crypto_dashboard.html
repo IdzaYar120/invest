@@ -326,6 +326,7 @@
                     <div class="d-flex gap-2">
                          <button onclick="window.print()" class="btn btn-outline-secondary no-print">🖨️ Друкувати / PDF</button>
                          <button onclick="exportCSV()" class="btn btn-outline-success no-print">📊 Експорт CSV</button>
+                         <button onclick="copyReport()" class="btn btn-outline-primary no-print">📋 Копіювати звіт</button>
                     </div>
                 </div>
                 
@@ -559,6 +560,42 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        };
+
+        // COPY REPORT
+        window.copyReport = function() {
+            let text = "🚀 Звіт Invest Pro 2.0 (Crypto)\n\n";
+            
+            {% if budget_amount > 0 %}
+            text += `💰 Бюджет: {{ budget_amount }} {{ budget_currency }}\n`;
+            {% endif %}
+            
+            text += "-------------------\n";
+            text += "ТОП МОНЕТИ:\n";
+            
+            {% for item in results %}
+            text += `\n{{ forloop.counter }}. {{ item.name }} ({{ item.ticker }})\n`;
+            text += `   ⭐️ Бали: {{ item.score }}\n`;
+            text += `   💵 Ціна: ${{ item.price_display }}\n`;
+            text += `   📈 Тренд: {{ item.trend }}%\n`;
+            text += `   📰 Новини: {{ item.sentiment_text }}\n`;
+            {% if item.allocated_usd %}
+            text += `   🛒 Рекомендовано купити на: ${{ item.allocated_usd }} (~{{ item.shares_to_buy }} монет)\n`;
+            {% endif %}
+            text += `   ✅ Сила: {{ item.reason }}\n`;
+            {% endfor %}
+            
+            text += "\n-------------------\n";
+            text += "Пріоритети стратегії:\n";
+            text += `🛡️ Надійність: {{ weights.Risk }}% | 📊 Активність: {{ weights.Profit }}% | 🚀 Тенденція: {{ weights.Value }}% | 🏷️ Знижка: {{ weights.Div }}%\n`;
+            text += "\nЗгенеровано системою Invest Pro 2.0";
+
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification("📋 Звіт скопійовано в буфер обміну!", "primary");
+            }).catch(err => {
+                console.error('Помилка копіювання:', err);
+                showNotification("❌ Не вдалося скопіювати звіт", "danger");
+            });
         };
         {% endif %}
 
