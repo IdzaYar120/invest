@@ -2,10 +2,14 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import requests
+import concurrent.futures
 from django.core.cache import cache 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer 
 
 class InvestmentAHP:
+    def __init__(self):
+        self.analyzer = SentimentIntensityAnalyzer()
+        
     STOCK_CATALOG = {
         '🔥 Топ Світу': [
             {'t': 'AAPL', 'n': 'Apple'}, {'t': 'MSFT', 'n': 'Microsoft'},
@@ -190,7 +194,6 @@ class InvestmentAHP:
             news = stock_ticker_obj.news
             if not news: return 0, "Нейтрально 😐"
             
-            analyzer = SentimentIntensityAnalyzer()
             scores = []
             
             for item in news[:7]: # Беремо 7 свіжих новин
@@ -198,7 +201,7 @@ class InvestmentAHP:
                 if not title: continue
                 
                 # Get VADER compound score (-1.0 to 1.0)
-                vs = analyzer.polarity_scores(title)
+                vs = self.analyzer.polarity_scores(title)
                 scores.append(vs['compound'])
             
             if not scores: return 0, "Нейтрально 😐"
@@ -218,106 +221,118 @@ class InvestmentAHP:
             print(f"Sentiment Error: {e}")
             return 0, "Немає даних"
 
+    def _fetch_single_stock(self, t, rec_translations):
+        cache_key = f"stock_v4_{t}" 
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return cached_data
+
+        try:
+            stock = yf.Ticker(t)
+            info = stock.info
+            
+            try:
+                hist = stock.history(period="1mo")
+                prices = hist['Close'].tolist()
+                sparkline_svg = self.generate_sparkline(prices)
+                trend_pct = ((prices[-1] - prices[0]) / prices[0]) * 100 if len(prices) > 1 else 0
+            except: prices, sparkline_svg, trend_pct = [], "", 0
+
+            sentiment_score, sentiment_text = self.analyze_news(stock)
+
+            sector = info.get("sector", "Other")
+            if info.get("quoteType") == "CRYPTOCURRENCY":
+                sector = "Cryptocurrency"
+            category = self.SECTOR_TRANSLATIONS.get(sector, "Інше 📦")
+            
+            beta = info.get("beta"); beta = 1.5 if beta is None else beta
+            pe = info.get("trailingPE"); pe = 50.0 if pe is None else pe
+            profit = info.get("profitMargins"); profit = 0.0 if profit is None else profit
+            div_yield = info.get("dividendYield"); div_yield = 0.0 if div_yield is None else div_yield
+            rec_key = info.get('recommendationKey', 'none')
+
+            stock_obj = {
+                "ticker": t.upper(), "name": info.get("shortName", t), "category": category,
+                "raw_sector": sector, # Для аналізу концентрації
+                "price": round(info.get("currentPrice", 0.0), 2),
+                "beta": beta, "profit": profit, "pe": pe, "div_yield": div_yield,
+                "sparkline": sparkline_svg, "trend": round(trend_pct, 1),
+                "expert_opinion": rec_translations.get(rec_key, 'Невідомо'),
+                "rec_key": rec_key,
+                "sentiment_score": sentiment_score, 
+                "sentiment_text": sentiment_text    
+            }
+            
+            cache.set(cache_key, stock_obj, 3600)
+            return stock_obj
+        except Exception as e:
+            print(f"Error {t}: {e}")
+            return None
+
     def get_stock_data(self, tickers):
         data = []
         unique_tickers = list(set(tickers))
         REC_TRANSLATIONS = {'strong_buy': '🔥 Активно купувати', 'buy': '✅ Купувати', 'hold': '✋ Тримати', 'sell': '🔻 Продавати', 'strong_sell': '💀 Активно продавати', 'none': '❓ Немає даних'}
         
-        for t in unique_tickers:
-            cache_key = f"stock_v4_{t}" 
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                data.append(cached_data)
-                continue
-
-            try:
-                stock = yf.Ticker(t)
-                info = stock.info
-                
-                try:
-                    hist = stock.history(period="1mo")
-                    prices = hist['Close'].tolist()
-                    sparkline_svg = self.generate_sparkline(prices)
-                    trend_pct = ((prices[-1] - prices[0]) / prices[0]) * 100 if len(prices) > 1 else 0
-                except: prices, sparkline_svg, trend_pct = [], "", 0
-
-                sentiment_score, sentiment_text = self.analyze_news(stock)
-
-                sector = info.get("sector", "Other")
-                if info.get("quoteType") == "CRYPTOCURRENCY":
-                    sector = "Cryptocurrency"
-                category = self.SECTOR_TRANSLATIONS.get(sector, "Інше 📦")
-                
-                beta = info.get("beta"); beta = 1.5 if beta is None else beta
-                pe = info.get("trailingPE"); pe = 50.0 if pe is None else pe
-                profit = info.get("profitMargins"); profit = 0.0 if profit is None else profit
-                div_yield = info.get("dividendYield"); div_yield = 0.0 if div_yield is None else div_yield
-                rec_key = info.get('recommendationKey', 'none')
-
-                stock_obj = {
-                    "ticker": t.upper(), "name": info.get("shortName", t), "category": category,
-                    "raw_sector": sector, # Для аналізу концентрації
-                    "price": round(info.get("currentPrice", 0.0), 2),
-                    "beta": beta, "profit": profit, "pe": pe, "div_yield": div_yield,
-                    "sparkline": sparkline_svg, "trend": round(trend_pct, 1),
-                    "expert_opinion": REC_TRANSLATIONS.get(rec_key, 'Невідомо'),
-                    "rec_key": rec_key,
-                    "sentiment_score": sentiment_score, 
-                    "sentiment_text": sentiment_text    
-                }
-                
-                cache.set(cache_key, stock_obj, 3600)
-                data.append(stock_obj)
-            except Exception as e:
-                print(f"Error {t}: {e}")
-                continue
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(self._fetch_single_stock, t, REC_TRANSLATIONS) for t in unique_tickers]
+            for future in concurrent.futures.as_completed(futures):
+                res = future.result()
+                if res:
+                    data.append(res)
         return data
+
+    def _fetch_single_crypto(self, t):
+        cache_key = f"crypto_v1_{t}"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return cached_data
+
+        try:
+            stock = yf.Ticker(t)
+            info = stock.info
+            
+            try:
+                hist = stock.history(period="1mo")
+                prices = hist['Close'].tolist()
+                sparkline_svg = self.generate_sparkline(prices)
+            except: prices, sparkline_svg = [], ""
+            
+            sentiment_score, sentiment_text = self.analyze_news(stock)
+            
+            market_cap = info.get("marketCap", 1)
+            volume = info.get("volume24Hr", info.get("regularMarketVolume", 1))
+            trend_50d = info.get("fiftyDayAverageChangePercent", 0.0) * 100
+            discount = info.get("fiftyTwoWeekHighChangePercent", 0.0) * 100
+            
+            raw_price = info.get("currentPrice", info.get("regularMarketPrice", 0.0))
+            
+            crypto_obj = {
+                "ticker": t.upper(), "name": info.get("shortName", t), "category": "Криптовалюта 🪙",
+                "price": raw_price,
+                "price_display": f"{raw_price:.8f}".rstrip('0').rstrip('.') if raw_price < 0.01 else f"{raw_price:.2f}",
+                "market_cap": market_cap, "volume": volume, "trend_50d": trend_50d, "discount": discount,
+                "sparkline": sparkline_svg, "trend": round(trend_50d, 1),
+                "sentiment_score": sentiment_score, 
+                "sentiment_text": sentiment_text    
+            }
+            
+            cache.set(cache_key, crypto_obj, 3600)
+            return crypto_obj
+        except Exception as e:
+            print(f"Error Crypto {t}: {e}")
+            return None
 
     def get_crypto_data(self, tickers):
         data = []
         unique_tickers = list(set(tickers))
         
-        for t in unique_tickers:
-            cache_key = f"crypto_v1_{t}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                data.append(cached_data)
-                continue
-
-            try:
-                stock = yf.Ticker(t)
-                info = stock.info
-                
-                try:
-                    hist = stock.history(period="1mo")
-                    prices = hist['Close'].tolist()
-                    sparkline_svg = self.generate_sparkline(prices)
-                except: prices, sparkline_svg = [], ""
-                
-                sentiment_score, sentiment_text = self.analyze_news(stock)
-                
-                market_cap = info.get("marketCap", 1)
-                volume = info.get("volume24Hr", info.get("regularMarketVolume", 1))
-                trend_50d = info.get("fiftyDayAverageChangePercent", 0.0) * 100
-                discount = info.get("fiftyTwoWeekHighChangePercent", 0.0) * 100
-                
-                raw_price = info.get("currentPrice", info.get("regularMarketPrice", 0.0))
-                
-                crypto_obj = {
-                    "ticker": t.upper(), "name": info.get("shortName", t), "category": "Криптовалюта 🪙",
-                    "price": raw_price,
-                    "price_display": f"{raw_price:.8f}".rstrip('0').rstrip('.') if raw_price < 0.01 else f"{raw_price:.2f}",
-                    "market_cap": market_cap, "volume": volume, "trend_50d": trend_50d, "discount": discount,
-                    "sparkline": sparkline_svg, "trend": round(trend_50d, 1),
-                    "sentiment_score": sentiment_score, 
-                    "sentiment_text": sentiment_text    
-                }
-                
-                cache.set(cache_key, crypto_obj, 3600)
-                data.append(crypto_obj)
-            except Exception as e:
-                print(f"Error Crypto {t}: {e}")
-                continue
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(self._fetch_single_crypto, t) for t in unique_tickers]
+            for future in concurrent.futures.as_completed(futures):
+                res = future.result()
+                if res:
+                    data.append(res)
         return data
 
     def rank_stocks(self, stock_data, weights):
