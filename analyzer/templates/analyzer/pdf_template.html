@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Інвестиційний Звіт</title>
+    <style>
+        @page {
+            size: a4 portrait;
+            margin: 2cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #4361ee;
+            margin-bottom: 5px;
+        }
+        .summary-box {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #4361ee;
+            color: white;
+            font-weight: bold;
+        }
+        .text-success { color: #10b981; }
+        .text-danger { color: #ef4444; }
+        .badge {
+            background-color: #e9ecef;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        .score {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4361ee;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Invest Pro 2.0 - Інвестиційний Звіт</h1>
+        <p>Сформовано на основі AHP-аналізу</p>
+    </div>
+
+    <div class="summary-box">
+        <h3>Параметри Стратегії</h3>
+        <p>
+            <strong>Надійність:</strong> {{ weights.Risk }}% | 
+            <strong>Ріст:</strong> {{ weights.Profit }}% | 
+            <strong>Вартість (P/E):</strong> {{ weights.Value }}% | 
+            <strong>Дивіденди:</strong> {{ weights.Div }}%
+        </p>
+        {% if budget_amount > 0 %}
+        <p>
+            <strong>Бюджет:</strong> {{ budget_amount }} {{ budget_currency }} 
+            {% if budget_currency != 'USD' %} (≈ ${{ total_budget_usd }}) {% endif %}
+        </p>
+        {% endif %}
+    </div>
+
+    <h3>Рейтинг Активів</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Компанія (Тікер)</th>
+                <th>Бали</th>
+                <th>Ціна</th>
+                <th>Тренд (1 міс)</th>
+                <th>Сила</th>
+                {% if budget_amount > 0 %}
+                <th>Купити на ($)</th>
+                <th>К-сть акцій</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in results %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ item.name }}</strong> ({{ item.ticker }})</td>
+                <td class="score">{{ item.score }}</td>
+                <td>${{ item.price }}</td>
+                <td class="{% if item.trend > 0 %}text-success{% else %}text-danger{% endif %}">
+                    {% if item.trend > 0 %}+{% endif %}{{ item.trend }}%
+                </td>
+                <td>{{ item.reason }}</td>
+                {% if budget_amount > 0 %}
+                <td>${{ item.allocated_usd|default:0 }}</td>
+                <td>{{ item.shares_to_buy|default:0 }}</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Детальні Метрики</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Тікер</th>
+                <th>Новини (ШІ)</th>
+                <th>Думка Експертів</th>
+                <th>Beta (Ризик)</th>
+                <th>Маржа</th>
+                <th>P/E</th>
+                <th>Див. Дохідність</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in results %}
+            <tr>
+                <td>{{ item.ticker }}</td>
+                <td>{{ item.sentiment_text }}</td>
+                <td>{{ item.expert_opinion }}</td>
+                <td>{{ item.metrics_display.beta }}</td>
+                <td>{{ item.metrics_display.profit }}%</td>
+                <td>{{ item.metrics_display.pe }}</td>
+                <td>{{ item.metrics_display.div }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p style="text-align: center; margin-top: 50px; color: #777; font-size: 10px;">
+        Генеровано автоматично системою Invest Pro 2.0. Не є фінансовою порадою.
+    </p>
+</body>
+</html>

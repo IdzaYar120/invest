@@ -5,4 +5,6 @@ urlpatterns = [
     path('', views.analyze, name='analyze'),
     path('crypto/', views.crypto_analyze, name='crypto_analyze'),
     path('search/', views.ticker_search, name='ticker_search'),
+    path('export/pdf/', views.export_pdf, name='export_pdf'),
+    path('export/csv/', views.export_csv, name='export_csv'),
 ]

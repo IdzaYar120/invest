@@ -1,7 +1,14 @@
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.template.loader import render_to_string
 from .utils import InvestmentAHP
 import json 
+import io
+
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    pisa = None
 
 def analyze(request):
     engine = InvestmentAHP()
@@ -114,6 +121,83 @@ def ticker_search(request):
     engine = InvestmentAHP()
     results = engine.search_yahoo_tickers(query, asset_type)
     return JsonResponse({'results': results})
+
+def export_pdf(request):
+    if not pisa:
+        return HttpResponse("xhtml2pdf is not installed", status=500)
+        
+    engine = InvestmentAHP()
+    if request.method == "POST":
+        tickers_input = request.POST.get('tickers_hidden', '')
+        tickers = [t.strip() for t in tickers_input.split(',') if t.strip()]
+        
+        if not tickers:
+            return HttpResponse("Немає даних для експорту", status=400)
+            
+        try:
+            sliders = {
+                "risk_profit": float(request.POST.get("slider_rp", 0)),
+                "risk_value": float(request.POST.get("slider_rv", 0)),
+                "profit_value": float(request.POST.get("slider_pv", 0)),
+                "profit_div": float(request.POST.get("slider_pd", 0)),
+                "risk_div": float(request.POST.get("slider_rd", 0)),
+                "value_div": float(request.POST.get("slider_vd", 0)),
+            }
+        except ValueError: 
+            sliders = {k:0 for k in ["risk_profit", "risk_value", "profit_value", "profit_div", "risk_div", "value_div"]}
+
+        try:
+            budget_amount = float(request.POST.get("budget_amount") or 0)
+            budget_currency = request.POST.get("budget_currency", "USD")
+        except ValueError:
+            budget_amount = 0.0
+            budget_currency = "USD"
+
+        weights, cr, worst_pair, worst_slider = engine.calculate_weights(sliders)
+        raw_data = engine.get_stock_data(tickers)
+        results = engine.rank_stocks(raw_data, weights)
+        
+        exchange_rate = engine.get_exchange_rate(budget_currency, "USD")
+        total_budget_usd = budget_amount * exchange_rate
+        
+        if total_budget_usd > 0:
+            for item in results:
+                allocated_usd = total_budget_usd * (item['score'] / 100.0)
+                item['allocated_usd'] = round(allocated_usd, 2)
+                if item['price'] > 0:
+                    item['shares_to_buy'] = round(allocated_usd / item['price'], 4)
+                else:
+                    item['shares_to_buy'] = 0.0
+
+        context = {
+            "results": results, 
+            "budget_amount": budget_amount,
+            "budget_currency": budget_currency,
+            "total_budget_usd": round(total_budget_usd, 2) if total_budget_usd > 0 else 0,
+            "weights": {
+                "Risk": round(weights[0]*100), 
+                "Profit": round(weights[1]*100), 
+                "Value": round(weights[2]*100),
+                "Div": round(weights[3]*100)
+            }
+        }
+        
+        html_string = render_to_string('analyzer/pdf_template.html', context)
+        
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="invest_portfolio_report.pdf"'
+        
+        pisa_status = pisa.CreatePDF(
+            html_string, dest=response, encoding='utf-8')
+            
+        if pisa_status.err:
+            return HttpResponse('Помилка генерації PDF <pre>' + html_string + '</pre>')
+        return response
+    
+    return HttpResponse("Invalid request method", status=400)
+
+def export_csv(request):
+    return HttpResponse("CSV export is handled on frontend. See JS exportCSV().", status=200)
 
 def crypto_analyze(request):
     engine = InvestmentAHP()
