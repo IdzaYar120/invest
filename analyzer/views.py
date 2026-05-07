@@ -2,11 +2,12 @@ from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.template.loader import render_to_string
 from .utils import InvestmentAHP
+from .models import PriceAlert
 import json 
 import io
 
 try:
-    from xhtml2pdf import pisa
+    from xhtml2pdf import pisa  # type: ignore
 except ImportError:
     pisa = None
 
@@ -25,20 +26,20 @@ def analyze(request):
 
         try:
             sliders = {
-                "risk_profit": float(request.POST.get("slider_rp", 0)),
-                "risk_value": float(request.POST.get("slider_rv", 0)),
-                "profit_value": float(request.POST.get("slider_pv", 0)),
-                "profit_div": float(request.POST.get("slider_pd", 0)),
-                "risk_div": float(request.POST.get("slider_rd", 0)),
-                "value_div": float(request.POST.get("slider_vd", 0)),
+                "risk_profit": float(request.POST.get("slider_rp") or 0),
+                "risk_value": float(request.POST.get("slider_rv") or 0),
+                "profit_value": float(request.POST.get("slider_pv") or 0),
+                "profit_div": float(request.POST.get("slider_pd") or 0),
+                "risk_div": float(request.POST.get("slider_rd") or 0),
+                "value_div": float(request.POST.get("slider_vd") or 0),
             }
-        except ValueError: 
+        except (ValueError, TypeError): 
             sliders = {k:0 for k in ["risk_profit", "risk_value", "profit_value", "profit_div", "risk_div", "value_div"]}
 
         try:
             budget_amount = float(request.POST.get("budget_amount") or 0)
-            budget_currency = request.POST.get("budget_currency", "USD")
-        except ValueError:
+            budget_currency = request.POST.get("budget_currency") or "USD"
+        except (ValueError, TypeError):
             budget_amount = 0.0
             budget_currency = "USD"
 
@@ -136,20 +137,20 @@ def export_pdf(request):
             
         try:
             sliders = {
-                "risk_profit": float(request.POST.get("slider_rp", 0)),
-                "risk_value": float(request.POST.get("slider_rv", 0)),
-                "profit_value": float(request.POST.get("slider_pv", 0)),
-                "profit_div": float(request.POST.get("slider_pd", 0)),
-                "risk_div": float(request.POST.get("slider_rd", 0)),
-                "value_div": float(request.POST.get("slider_vd", 0)),
+                "risk_profit": float(request.POST.get("slider_rp") or 0),
+                "risk_value": float(request.POST.get("slider_rv") or 0),
+                "profit_value": float(request.POST.get("slider_pv") or 0),
+                "profit_div": float(request.POST.get("slider_pd") or 0),
+                "risk_div": float(request.POST.get("slider_rd") or 0),
+                "value_div": float(request.POST.get("slider_vd") or 0),
             }
-        except ValueError: 
+        except (ValueError, TypeError): 
             sliders = {k:0 for k in ["risk_profit", "risk_value", "profit_value", "profit_div", "risk_div", "value_div"]}
 
         try:
             budget_amount = float(request.POST.get("budget_amount") or 0)
-            budget_currency = request.POST.get("budget_currency", "USD")
-        except ValueError:
+            budget_currency = request.POST.get("budget_currency") or "USD"
+        except (ValueError, TypeError):
             budget_amount = 0.0
             budget_currency = "USD"
 
@@ -214,20 +215,20 @@ def crypto_analyze(request):
 
         try:
             sliders = {
-                "risk_profit": float(request.POST.get("slider_rp", 0)),
-                "risk_value": float(request.POST.get("slider_rv", 0)),
-                "profit_value": float(request.POST.get("slider_pv", 0)),
-                "profit_div": float(request.POST.get("slider_pd", 0)),
-                "risk_div": float(request.POST.get("slider_rd", 0)),
-                "value_div": float(request.POST.get("slider_vd", 0)),
+                "risk_profit": float(request.POST.get("slider_rp") or 0),
+                "risk_value": float(request.POST.get("slider_rv") or 0),
+                "profit_value": float(request.POST.get("slider_pv") or 0),
+                "profit_div": float(request.POST.get("slider_pd") or 0),
+                "risk_div": float(request.POST.get("slider_rd") or 0),
+                "value_div": float(request.POST.get("slider_vd") or 0),
             }
-        except ValueError: 
+        except (ValueError, TypeError): 
             sliders = {k:0 for k in ["risk_profit", "risk_value", "profit_value", "profit_div", "risk_div", "value_div"]}
 
         try:
             budget_amount = float(request.POST.get("budget_amount") or 0)
-            budget_currency = request.POST.get("budget_currency", "USD")
-        except ValueError:
+            budget_currency = request.POST.get("budget_currency") or "USD"
+        except (ValueError, TypeError):
             budget_amount = 0.0
             budget_currency = "USD"
 
@@ -278,3 +279,17 @@ def crypto_analyze(request):
         return render(request, "analyzer/crypto_dashboard.html", context)
     
     return render(request, "analyzer/crypto_dashboard.html", {"catalog": engine.CRYPTO_CATALOG})
+def create_alert(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            PriceAlert.objects.create(
+                email=data['email'],
+                ticker=data['ticker'].upper(),
+                target_price=float(data['target_price']),
+                condition=data['condition']
+            )
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})

@@ -235,7 +235,7 @@ class InvestmentAHP:
                 hist = stock.history(period="1mo")
                 prices = hist['Close'].tolist()
                 sparkline_svg = self.generate_sparkline(prices)
-                trend_pct = ((prices[-1] - prices[0]) / prices[0]) * 100 if len(prices) > 1 else 0
+                trend_pct = ((prices[-1] - prices[0]) / prices[0]) * 100 if len(prices) > 1 and prices[0] != 0 else 0
             except: prices, sparkline_svg, trend_pct = [], "", 0
 
             sentiment_score, sentiment_text = self.analyze_news(stock)
@@ -254,7 +254,7 @@ class InvestmentAHP:
             stock_obj = {
                 "ticker": t.upper(), "name": info.get("shortName", t), "category": category,
                 "raw_sector": sector, # Для аналізу концентрації
-                "price": round(info.get("currentPrice", 0.0), 2),
+                "price": round(info.get("currentPrice") or info.get("regularMarketPrice") or 0.0, 2),
                 "beta": beta, "profit": profit, "pe": pe, "div_yield": div_yield,
                 "sparkline": sparkline_svg, "trend": round(trend_pct, 1),
                 "expert_opinion": rec_translations.get(rec_key, 'Невідомо'),
@@ -300,12 +300,12 @@ class InvestmentAHP:
             
             sentiment_score, sentiment_text = self.analyze_news(stock)
             
-            market_cap = info.get("marketCap", 1)
-            volume = info.get("volume24Hr", info.get("regularMarketVolume", 1))
-            trend_50d = info.get("fiftyDayAverageChangePercent", 0.0) * 100
-            discount = info.get("fiftyTwoWeekHighChangePercent", 0.0) * 100
+            market_cap = info.get("marketCap") or 1
+            volume = info.get("volume24Hr") or info.get("regularMarketVolume") or 1
+            trend_50d = (info.get("fiftyDayAverageChangePercent") or 0.0) * 100
+            discount = (info.get("fiftyTwoWeekHighChangePercent") or 0.0) * 100
             
-            raw_price = info.get("currentPrice", info.get("regularMarketPrice", 0.0))
+            raw_price = info.get("currentPrice") or info.get("regularMarketPrice") or 0.0
             
             crypto_obj = {
                 "ticker": t.upper(), "name": info.get("shortName", t), "category": "Криптовалюта 🪙",
@@ -338,10 +338,10 @@ class InvestmentAHP:
     def rank_stocks(self, stock_data, weights):
         
         if not stock_data: return []
-        betas = np.array([d["beta"] for d in stock_data])
-        profits = np.array([d["profit"] for d in stock_data])
-        pes = np.array([d["pe"] for d in stock_data])
-        divs = np.array([d["div_yield"] for d in stock_data])
+        betas = np.array([d["beta"] for d in stock_data], dtype=float)
+        profits = np.array([d["profit"] for d in stock_data], dtype=float)
+        pes = np.array([d["pe"] for d in stock_data], dtype=float)
+        divs = np.array([d["div_yield"] for d in stock_data], dtype=float)
 
         inv_betas = 1 / (betas + 0.01)
         norm_risk = inv_betas / inv_betas.sum()
@@ -377,10 +377,10 @@ class InvestmentAHP:
     def rank_crypto(self, crypto_data, weights):
         if not crypto_data: return []
         
-        m_caps = np.array([d["market_cap"] for d in crypto_data])
-        vols = np.array([d["volume"] for d in crypto_data])
-        trends = np.array([d["trend_50d"] for d in crypto_data])
-        discounts = np.array([d["discount"] for d in crypto_data])
+        m_caps = np.array([d["market_cap"] for d in crypto_data], dtype=float)
+        vols = np.array([d["volume"] for d in crypto_data], dtype=float)
+        trends = np.array([d["trend_50d"] for d in crypto_data], dtype=float)
+        discounts = np.array([d["discount"] for d in crypto_data], dtype=float)
         
         norm_mcap = m_caps / (m_caps.sum() + 0.0001)
         norm_vol = vols / (vols.sum() + 0.0001)

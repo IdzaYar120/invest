@@ -7,4 +7,5 @@ urlpatterns = [
     path('search/', views.ticker_search, name='ticker_search'),
     path('export/pdf/', views.export_pdf, name='export_pdf'),
     path('export/csv/', views.export_csv, name='export_csv'),
+    path('api/create_alert/', views.create_alert, name='create_alert'),
 ]
