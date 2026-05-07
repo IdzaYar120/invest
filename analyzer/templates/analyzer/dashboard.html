@@ -55,6 +55,26 @@
             --graph-stroke: #818cf8;
         }
 
+        /* Fix Bootstrap colors in Dark Mode */
+        [data-theme="dark"] .bg-light { background-color: rgba(255, 255, 255, 0.05) !important; color: var(--text-main) !important; }
+        [data-theme="dark"] .bg-white { background-color: var(--card-bg) !important; color: var(--text-main) !important; }
+        [data-theme="dark"] .alert-warning { background-color: rgba(245, 158, 11, 0.1) !important; color: #fcd34d !important; border-color: rgba(245, 158, 11, 0.2) !important; }
+        [data-theme="dark"] .alert-success { background-color: rgba(16, 185, 129, 0.1) !important; color: #6ee7b7 !important; border-color: rgba(16, 185, 129, 0.2) !important; }
+        [data-theme="dark"] .alert-danger { background-color: rgba(239, 68, 68, 0.1) !important; color: #fca5a5 !important; border-color: rgba(239, 68, 68, 0.2) !important; }
+        [data-theme="dark"] .alert-info { background-color: rgba(56, 189, 248, 0.1) !important; color: #7dd3fc !important; border-color: rgba(56, 189, 248, 0.2) !important; }
+        
+        /* Fix Intro.js tooltips in Dark Mode */
+        [data-theme="dark"] .introjs-tooltip { background-color: var(--card-bg) !important; color: var(--text-main) !important; border: var(--card-border) !important; box-shadow: var(--card-shadow) !important; }
+        [data-theme="dark"] .introjs-tooltiptext { color: var(--text-main) !important; }
+        [data-theme="dark"] .introjs-arrow.top { border-bottom-color: var(--card-bg) !important; }
+        [data-theme="dark"] .introjs-arrow.bottom { border-top-color: var(--card-bg) !important; }
+        [data-theme="dark"] .introjs-arrow.left { border-right-color: var(--card-bg) !important; }
+        [data-theme="dark"] .introjs-arrow.right { border-left-color: var(--card-bg) !important; }
+        [data-theme="dark"] .introjs-tooltipbuttons a { color: var(--text-main) !important; text-shadow: none !important; background-color: var(--input-bg) !important; border-color: var(--input-border) !important; }
+        [data-theme="dark"] .introjs-tooltipbuttons a:hover { background-color: var(--search-hover) !important; }
+        [data-theme="dark"] .introjs-tooltipbuttons .introjs-button.introjs-nextbutton { background-color: var(--primary-color) !important; color: white !important; border-color: var(--primary-color) !important; }
+        [data-theme="dark"] .introjs-skipbutton { color: var(--text-main) !important; opacity: 0.8 !important; }
+
         body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Inter', system-ui, sans-serif; transition: background-color 0.3s, color 0.3s; }
         
         /* HEADER */
