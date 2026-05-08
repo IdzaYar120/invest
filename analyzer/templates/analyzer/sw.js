@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-pro-cache-v1';
+const CACHE_NAME = 'invest-pro-cache-v2';
 const urlsToCache = [
   '/',
   '/crypto/',
@@ -20,9 +20,41 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
+  // Use Network First for HTML pages so they are always up to date
+  if (event.request.mode === 'navigate' || event.request.headers.get('accept').includes('text/html')) {
+      event.respondWith(
+          fetch(event.request).then(response => {
+              return caches.open(CACHE_NAME).then(cache => {
+                  cache.put(event.request, response.clone());
+                  return response;
+              });
+          }).catch(() => {
+              return caches.match(event.request);
+          })
+      );
+      return;
+  }
+
+  // Use Cache First for static assets
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -31,9 +63,7 @@ self.addEventListener('fetch', event => {
           return response;
         }
         // Else fetch from network
-        return fetch(event.request).catch(() => {
-          // Fallback if offline
-        });
+        return fetch(event.request);
       })
   );
 });
