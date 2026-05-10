@@ -111,6 +111,9 @@ def analyze(request):
         context["sector_stats"] = sector_stats
         context["sector_warnings"] = sector_warnings
 
+        if total_budget_usd > 0:
+            context["backtest"] = engine.get_backtest_data(results, total_budget_usd)
+
         return render(request, "analyzer/dashboard.html", context)
     
     return render(request, "analyzer/dashboard.html", {"catalog": engine.STOCK_CATALOG})
@@ -276,6 +279,9 @@ def crypto_analyze(request):
             "worst_pair": worst_pair,
             "worst_slider": worst_slider
         }
+        if total_budget_usd > 0:
+            context["backtest"] = engine.get_backtest_data(results, total_budget_usd)
+            
         return render(request, "analyzer/crypto_dashboard.html", context)
     
     return render(request, "analyzer/crypto_dashboard.html", {"catalog": engine.CRYPTO_CATALOG})

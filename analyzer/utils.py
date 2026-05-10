@@ -507,3 +507,48 @@ class InvestmentAHP:
         except Exception as e:
             print(f"Portfolio Analysis Error: {e}")
             return None
+
+    def get_backtest_data(self, portfolio_results, total_budget_usd):
+        if not portfolio_results or total_budget_usd <= 0:
+            return None
+            
+        tickers = [item['ticker'] for item in portfolio_results]
+        try:
+            data = yf.download(tickers, period="1y", interval="1d", progress=False)['Close']
+            
+            if isinstance(data, pd.Series):
+                data = data.to_frame(name=tickers[0])
+                
+            data = data.ffill().dropna()
+            if data.empty: return None
+            
+            start_prices = data.iloc[0]
+            end_prices = data.iloc[-1]
+            
+            past_total_value = total_budget_usd
+            current_total_value = 0
+            
+            for item in portfolio_results:
+                ticker = item['ticker']
+                if ticker in start_prices and ticker in end_prices:
+                    allocated = item.get('allocated_usd', 0)
+                    if start_prices[ticker] > 0:
+                        shares = allocated / start_prices[ticker]
+                        current_value = shares * end_prices[ticker]
+                        current_total_value += current_value
+                    else:
+                        current_total_value += allocated
+                else:
+                    current_total_value += item.get('allocated_usd', 0)
+                    
+            profit_pct = ((current_total_value - past_total_value) / past_total_value) * 100 if past_total_value > 0 else 0
+            
+            return {
+                "past_value": round(past_total_value, 2),
+                "current_value": round(current_total_value, 2),
+                "profit_pct": round(profit_pct, 2),
+                "is_profit": profit_pct >= 0
+            }
+        except Exception as e:
+            print(f"Backtest Error: {e}")
+            return None
