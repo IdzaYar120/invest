@@ -694,12 +694,6 @@
 
         // COPY REPORT
         window.copyReport = function() {
-            let text = "🚀 Звіт Invest Pro 2.0 (Crypto)\n\n";
-            
-            {% if budget_amount > 0 %}
-            text += `💰 Бюджет: {{ budget_amount }} {{ budget_currency }}\n`;
-            {% endif %}
-            
             text += "-------------------\n";
             text += "ТОП МОНЕТИ:\n";
             
