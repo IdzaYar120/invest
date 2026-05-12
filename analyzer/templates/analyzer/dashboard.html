@@ -888,7 +888,9 @@
         window.addTickerSafe = function(ticker, name, animate=true) {
             if (!ticker) return;
             if (selectedTickers.has(ticker)) { showNotification(`⚠️ <b>${name}</b> вже є в портфелі!`, 'warning'); return; }
-            selectedTickers.add(ticker); updateHiddenInput(); if (emptyMsg) emptyMsg.style.display = 'none';
+            selectedTickers.add(ticker); 
+            restoredNames[ticker] = name;
+            updateHiddenInput(); if (emptyMsg) emptyMsg.style.display = 'none';
             const badge = document.createElement('span');
             badge.className = 'badge bg-white text-dark border p-2 d-flex align-items-center gap-2 shadow-sm';
             badge.style.backgroundColor = 'var(--badge-bg)'; badge.style.color = 'var(--badge-text)'; badge.style.borderColor = 'var(--input-border)';
@@ -896,10 +898,28 @@
             badge.innerHTML = `${name} <span style="cursor:pointer; color:#ef4444; font-weight:bold; margin-left:5px;" onclick="removeTicker('${ticker}', this)">✕</span>`;
             selectedList.appendChild(badge);
             if (animate) showNotification(`✅ <b>${name}</b> додано успішно!`, 'success');
+            savePortfolioToLocal();
         };
-        window.removeTicker = function(ticker, element) { selectedTickers.delete(ticker); if (element && element.parentElement) element.parentElement.remove(); updateHiddenInput(); if (selectedTickers.size === 0 && emptyMsg) emptyMsg.style.display = 'inline'; };
+        window.removeTicker = function(ticker, element) { selectedTickers.delete(ticker); if (element && element.parentElement) element.parentElement.remove(); updateHiddenInput(); if (selectedTickers.size === 0 && emptyMsg) emptyMsg.style.display = 'inline'; savePortfolioToLocal(); };
         function updateHiddenInput() { hiddenInput.value = Array.from(selectedTickers).join(','); }
-        if (hiddenInput.value) hiddenInput.value.split(',').forEach(t => { const ticker = t.trim(); if(ticker) { const name = restoredNames[ticker] || ticker; addTickerSafe(ticker, name, false); } });
+        
+        function savePortfolioToLocal() {
+            let toSave = {};
+            selectedTickers.forEach(t => { toSave[t] = restoredNames[t] || t; });
+            localStorage.setItem('invest_portfolio_stocks', JSON.stringify(toSave));
+        }
+
+        if (hiddenInput.value) {
+            hiddenInput.value.split(',').forEach(t => { const ticker = t.trim(); if(ticker) { const name = restoredNames[ticker] || ticker; addTickerSafe(ticker, name, false); } });
+        } else {
+            try {
+                let saved = localStorage.getItem('invest_portfolio_stocks');
+                if (saved) {
+                    saved = JSON.parse(saved);
+                    Object.keys(saved).forEach(ticker => { addTickerSafe(ticker, saved[ticker], false); });
+                }
+            } catch (e) {}
+        }
 
         let timeout = null;
         if (searchInput) {
