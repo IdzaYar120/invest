@@ -458,7 +458,7 @@
                                         {% if item.trend > 0 %}▲{% else %}▼{% endif %} {{ item.trend }}%
                                     </span>
                                 </div>
-                                <div class="text-muted small mb-2">{{ item.ticker }} | ${{ item.price_display }}</div>
+                                <div class="text-muted small mb-2">{{ item.ticker }} | $<span class="crypto-price" data-ticker="{{ item.ticker }}" style="font-weight:bold; transition: background-color 0.5s ease;">{{ item.price_display }}</span></div>
                                 <div style="height: 40px; width: 150px;" class="mb-2">
                                     <svg viewBox="0 0 120 40" class="w-100 h-100"><path d="{{ item.sparkline }}" class="sparkline {% if item.trend >= 0 %}sparkline-up{% else %}sparkline-down{% endif %}"></path></svg>
                                 </div>
@@ -797,6 +797,44 @@
         {% if error_message %}
             setTimeout(() => { showNotification("{{ error_message }}", "danger"); const overlay = document.getElementById('loadingOverlay'); if(overlay) overlay.style.display = 'none'; }, 500);
         {% endif %}
+
+        // REAL-TIME PRICE UPDATES
+        const priceElements = document.querySelectorAll('.crypto-price');
+        if (priceElements.length > 0) {
+            const tickersList = Array.from(priceElements).map(el => el.dataset.ticker).join(',');
+            setInterval(() => {
+                fetch(`/api/crypto_prices/?tickers=${tickersList}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        priceElements.forEach(el => {
+                            const ticker = el.dataset.ticker;
+                            if (data[ticker]) {
+                                const newDisplay = data[ticker].price_display;
+                                const oldDisplay = el.innerText;
+                                if (newDisplay !== oldDisplay) {
+                                    const oldVal = parseFloat(oldDisplay.replace(/ /g, ''));
+                                    const newVal = parseFloat(newDisplay.replace(/ /g, ''));
+                                    
+                                    el.innerText = newDisplay;
+                                    
+                                    const color = newVal >= oldVal ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)'; 
+                                    
+                                    el.style.transition = 'none';
+                                    el.style.backgroundColor = color;
+                                    el.style.padding = '0px 4px';
+                                    el.style.borderRadius = '4px';
+                                    
+                                    setTimeout(() => {
+                                        el.style.transition = 'background-color 1.5s ease';
+                                        el.style.backgroundColor = 'transparent';
+                                    }, 50);
+                                }
+                            }
+                        });
+                    })
+                    .catch(err => console.error('Live price update error:', err));
+            }, 8000); // 8 seconds
+        }
 
         // AHP CONTROLS LOGIC
         const ahpControls = document.querySelectorAll('.ahp-control-wrapper');

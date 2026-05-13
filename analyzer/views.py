@@ -5,6 +5,8 @@ from .utils import InvestmentAHP
 from .models import PriceAlert
 import json 
 import io
+import concurrent.futures
+import yfinance as yf
 
 try:
     from xhtml2pdf import pisa  # type: ignore
@@ -299,3 +301,27 @@ def create_alert(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+def api_crypto_prices(request):
+    tickers = request.GET.get('tickers', '')
+    if not tickers:
+        return JsonResponse({})
+    tickers_list = [t.strip() for t in tickers.split(',') if t.strip()]
+    prices = {}
+    
+    def fetch_price(t):
+        try:
+            info = yf.Ticker(t).info
+            price = info.get("currentPrice") or info.get("regularMarketPrice") or 0.0
+            return t, price
+        except:
+            return t, None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        for t, price in executor.map(fetch_price, tickers_list):
+            if price is not None and price > 0:
+                prices[t] = {
+                    "price": price,
+                    "price_display": f"{price:.8f}".rstrip('0').rstrip('.') if price < 0.01 else f"{price:.2f}"
+                }
+    return JsonResponse(prices)

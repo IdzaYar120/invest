@@ -8,4 +8,5 @@ urlpatterns = [
     path('export/pdf/', views.export_pdf, name='export_pdf'),
     path('export/csv/', views.export_csv, name='export_csv'),
     path('api/create_alert/', views.create_alert, name='create_alert'),
+    path('api/crypto_prices/', views.api_crypto_prices, name='api_crypto_prices'),
 ]
