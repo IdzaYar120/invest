@@ -1,4 +1,4 @@
-{% load static %}
+{% load static i18n %}
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -234,6 +234,19 @@
     </div>
 
     <div class="main-header text-center">
+        <form action="{% url 'set_language' %}" method="post" class="d-inline" style="position: absolute; top: 20px; left: 20px; z-index: 1000;">
+            {% csrf_token %}
+            <input name="next" type="hidden" value="{{ request.get_full_path|default:'/crypto/' }}">
+            <select name="language" onchange="this.form.submit()" class="form-select form-select-sm" style="width: auto; background-color: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; font-weight: bold;">
+                {% get_current_language as LANGUAGE_CODE %}
+                {% get_available_languages as LANGUAGES %}
+                {% for lang in LANGUAGES %}
+                    <option value="{{ lang.0 }}" class="text-dark" {% if lang.0 == LANGUAGE_CODE %}selected{% endif %}>
+                        {{ lang.0|upper }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
         <button class="theme-toggle" id="themeBtn" title="Змінити тему" style="right: 70px;">☀️</button>
         <button class="theme-toggle" onclick="introJs().setOption('showProgress', true).start()" title="Як це працює?" style="right: 20px;">❔</button>
         <button class="theme-toggle" data-bs-toggle="modal" data-bs-target="#alertModal" title="Сповіщення" style="right: 120px;">🔔</button>
@@ -246,10 +259,10 @@
     <div class="container pb-5">
         <ul class="nav nav-pills justify-content-center mb-4 mt-2">
             <li class="nav-item">
-                <a class="nav-link fw-bold px-4 rounded-pill text-muted bg-white border" href="{% url 'analyze' %}">📊 Аналіз Акцій</a>
+                <a class="nav-link fw-bold px-4 rounded-pill text-muted bg-white border" href="{% url 'analyze' %}">{% trans "📊 Аналіз Акцій" %}</a>
             </li>
             <li class="nav-item ms-2">
-                <a class="nav-link fw-bold px-4 rounded-pill active shadow-sm" href="{% url 'crypto_analyze' %}">🪙 Аналіз Крипто</a>
+                <a class="nav-link fw-bold px-4 rounded-pill active shadow-sm" href="{% url 'crypto_analyze' %}">{% trans "🪙 Аналіз Крипто" %}</a>
             </li>
         </ul>
         <form method="post" id="mainForm">
@@ -257,7 +270,7 @@
             <input type="hidden" name="tickers_hidden" id="tickersHidden" value="{{ selected_tickers }}">
 
             <div class="custom-card p-4 mb-4">
-                <h4 class="fw-bold mb-3">1. Портфель</h4>
+                <h4 class="fw-bold mb-3">{% trans "1. Портфель" %}</h4>
                 <div class="mb-4">
                     {% for category, stocks in catalog.items %}
                     <div class="mb-3">
@@ -271,7 +284,7 @@
                     {% endfor %}
                 </div>
                 <div class="position-relative mb-3" data-intro="Тут ви можете знайти криптовалюту за назвою або тікером." data-step="1">
-                    <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="Пошук (наприклад: Bitcoin, ETH-USD)..." autocomplete="off">
+                    <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="{% trans 'Пошук (наприклад: Bitcoin, ETH-USD)...' %}" autocomplete="off">
                     <div id="searchResults" class="search-results shadow"></div>
                 </div>
                 <div class="p-3 rounded border" style="background-color: var(--input-bg); border-color: var(--input-border) !important;" data-intro="Обрані вами монети з'являться тут." data-step="2">
@@ -280,10 +293,10 @@
                     </div>
                 </div>
 
-                <h5 class="fw-bold mt-4 mb-3">Бюджет для інвестування 💰</h5>
+                <h5 class="fw-bold mt-4 mb-3">{% trans "Бюджет для інвестування 💰" %}</h5>
                 <div class="row g-2 align-items-center" data-intro="Вкажіть суму, яку ви готові інвестувати." data-step="3">
                     <div class="col-md-8">
-                        <input type="number" step="0.01" min="0" class="form-control form-control-lg" name="budget_amount" value="{{ budget_amount|default:'' }}" placeholder="Введіть суму, яку плануєте інвестувати">
+                        <input type="number" step="0.01" min="0" class="form-control form-control-lg" name="budget_amount" value="{{ budget_amount|default:'' }}" placeholder="{% trans 'Введіть суму, яку плануєте інвестувати' %}">
                     </div>
                     <div class="col-md-4">
                         <select class="form-select form-select-lg" name="budget_currency">
@@ -296,7 +309,7 @@
             </div>
 
             <div class="custom-card p-4 mb-5" data-intro="Налаштуйте стратегію для криптовалют. Вибір пріоритетів залежить від вас." data-step="4">
-                <h4 class="fw-bold mb-3">2. Стратегія (AHP)</h4>
+                <h4 class="fw-bold mb-3">{% trans "2. Стратегія (AHP)" %}</h4>
                 {% if cr is not None and not is_consistent %}
                 <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
                     <span class="fs-4 me-3">⚠️</span>
@@ -313,7 +326,7 @@
                 <div class="row g-4 mb-4">
                     <div class="col-md-4">
                         <div class="ahp-control-wrapper" data-name="slider_rp" data-val="{{ sliders.risk_profit|default:0 }}">
-                            <div class="ahp-labels"><span>🛡️ Надійність</span><span class="ahp-status">Рівнозначно</span><span>Активність 📊</span></div>
+                            <div class="ahp-labels"><span>🛡️ {% trans "Надійність" %}</span><span class="ahp-status">{% trans "Рівнозначно" %}</span><span>{% trans "Активність" %} 📊</span></div>
                             <div class="ahp-track">
                                 <div class="ahp-indicator"></div>
                                 <!-- Buttons generated by JS -->
@@ -323,7 +336,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="ahp-control-wrapper" data-name="slider_rv" data-val="{{ sliders.risk_value|default:0 }}">
-                            <div class="ahp-labels"><span>🛡️ Надійність</span><span class="ahp-status">Рівнозначно</span><span>Тенденція 🚀</span></div>
+                            <div class="ahp-labels"><span>🛡️ {% trans "Надійність" %}</span><span class="ahp-status">{% trans "Рівнозначно" %}</span><span>{% trans "Тенденція" %} 🚀</span></div>
                             <div class="ahp-track">
                                 <div class="ahp-indicator"></div>
                             </div>
@@ -332,7 +345,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="ahp-control-wrapper" data-name="slider_pv" data-val="{{ sliders.profit_value|default:0 }}">
-                            <div class="ahp-labels"><span>📊 Активність</span><span class="ahp-status">Рівнозначно</span><span>Тенденція 🚀</span></div>
+                            <div class="ahp-labels"><span>📊 {% trans "Активність" %}</span><span class="ahp-status">{% trans "Рівнозначно" %}</span><span>{% trans "Тенденція" %} 🚀</span></div>
                             <div class="ahp-track">
                                 <div class="ahp-indicator"></div>
                             </div>
@@ -341,12 +354,12 @@
                     </div>
                 </div>
 
-                <h6 class="text-muted text-uppercase small fw-bold mb-3 border-top pt-3" style="border-color: var(--input-border) !important;">Фактор доходу</h6>
+                <h6 class="text-muted text-uppercase small fw-bold mb-3 border-top pt-3" style="border-color: var(--input-border) !important;">{% trans "Фактор доходу" %}</h6>
                 
                 <div class="row g-4">
                     <div class="col-md-4">
                         <div class="ahp-control-wrapper" data-name="slider_pd" data-val="{{ sliders.profit_div|default:0 }}">
-                            <div class="ahp-labels"><span>📊 Активність</span><span class="ahp-status">Рівнозначно</span><span>Знижка 🏷️</span></div>
+                            <div class="ahp-labels"><span>📊 {% trans "Активність" %}</span><span class="ahp-status">{% trans "Рівнозначно" %}</span><span>{% trans "Знижка" %} 🏷️</span></div>
                             <div class="ahp-track">
                                 <div class="ahp-indicator"></div>
                             </div>
@@ -355,7 +368,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="ahp-control-wrapper" data-name="slider_rd" data-val="{{ sliders.risk_div|default:0 }}">
-                            <div class="ahp-labels"><span>🛡️ Надійність</span><span class="ahp-status">Рівнозначно</span><span>Знижка 🏷️</span></div>
+                            <div class="ahp-labels"><span>🛡️ {% trans "Надійність" %}</span><span class="ahp-status">{% trans "Рівнозначно" %}</span><span>{% trans "Знижка" %} 🏷️</span></div>
                             <div class="ahp-track">
                                 <div class="ahp-indicator"></div>
                             </div>
@@ -364,7 +377,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="ahp-control-wrapper" data-name="slider_vd" data-val="{{ sliders.value_div|default:0 }}">
-                            <div class="ahp-labels"><span>🚀 Тенденція</span><span class="ahp-status">Рівнозначно</span><span>Знижка 🏷️</span></div>
+                            <div class="ahp-labels"><span>🚀 {% trans "Тенденція" %}</span><span class="ahp-status">{% trans "Рівнозначно" %}</span><span>{% trans "Знижка" %} 🏷️</span></div>
                             <div class="ahp-track">
                                 <div class="ahp-indicator"></div>
                             </div>
@@ -373,7 +386,7 @@
                     </div>
                 </div>
                 <div class="text-center mt-5" data-intro="Натисніть сюди, щоб запустити магію аналізу!" data-step="5">
-                    <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow fw-bold">🚀 Аналізувати</button>
+                    <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow fw-bold">{% trans "🚀 Аналізувати" %}</button>
                 </div>
             </div>
         </form>
@@ -382,10 +395,10 @@
         <div class="row justify-content-center">
             <div class="col-lg-12">
                 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-                    <h3 class="fw-bold mb-0">Результат Аналізу</h3>
+                    <h3 class="fw-bold mb-0">{% trans "Результат Аналізу" %}</h3>
                     {% if budget_amount > 0 %}
                     <div class="d-flex align-items-center bg-white border rounded-pill px-4 py-2 shadow-sm" style="background-color: var(--card-bg) !important; border-color: var(--input-border) !important;">
-                        <span class="me-2 text-muted small text-uppercase fw-bold" style="font-size: 0.7rem;">Мій Бюджет:</span>
+                        <span class="me-2 text-muted small text-uppercase fw-bold" style="font-size: 0.7rem;">{% trans "Мій Бюджет:" %}</span>
                         <span class="fw-bold text-primary fs-5">{{ budget_amount }} {{ budget_currency }}</span>
                         {% if budget_currency != 'USD' %}
                         <span class="ms-2 text-muted small" style="opacity: 0.8;">(≈ ${{ total_budget_usd }})</span>
@@ -393,9 +406,9 @@
                     </div>
                     {% endif %}
                     <div class="d-flex gap-2">
-                         <button onclick="window.print()" class="btn btn-outline-secondary no-print">🖨️ Друкувати / PDF</button>
-                         <button onclick="exportCSV()" class="btn btn-outline-success no-print">📊 Експорт CSV</button>
-                         <button onclick="copyReport()" class="btn btn-outline-primary no-print">📋 Копіювати звіт</button>
+                         <button onclick="window.print()" class="btn btn-outline-secondary no-print">{% trans "🖨️ Друкувати / PDF" %}</button>
+                         <button onclick="exportCSV()" class="btn btn-outline-success no-print">{% trans "📊 Експорт CSV" %}</button>
+                         <button onclick="copyReport()" class="btn btn-outline-primary no-print">{% trans "📋 Копіювати звіт" %}</button>
                     </div>
                 </div>
                 
@@ -416,7 +429,7 @@
                 <div class="row mb-4">
                     <div class="col-md-6 mb-3">
                         <div class="custom-card p-4 h-100">
-                            <h5 class="fw-bold text-center mb-3">Порівняння лідерів 🕸️</h5>
+                            <h5 class="fw-bold text-center mb-3">{% trans "Порівняння лідерів 🕸️" %}</h5>
                             <div style="min-height: 350px; display: flex; justify-content: center;">
                                 <div id="radarChart" style="width: 100%;"></div>
                             </div>
@@ -424,8 +437,8 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <div class="custom-card p-4 h-100">
-                            <h5 class="fw-bold text-center mb-3">Розподіл Бюджету 💰</h5>
-                            <p class="text-center text-muted small">Рекомендована доля в портфелі</p>
+                            <h5 class="fw-bold text-center mb-3">{% trans "Розподіл Бюджету 💰" %}</h5>
+                            <p class="text-center text-muted small">{% trans "Рекомендована доля в портфелі" %}</p>
                             <div style="min-height: 350px; display: flex; justify-content: center; position: relative;">
                                 <div id="allocationChart" style="width: 100%;"></div>
                             </div>

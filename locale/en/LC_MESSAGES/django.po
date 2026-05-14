@@ -1,0 +1,81 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: InvestPro\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-14 20:00+0000\n"
+"PO-Revision-Date: 2026-05-14 20:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "📊 Аналіз Акцій"
+msgstr "📊 Stock Analysis"
+
+msgid "🪙 Аналіз Крипто"
+msgstr "🪙 Crypto Analysis"
+
+msgid "Пошук (наприклад: Bitcoin, ETH-USD)..."
+msgstr "Search (e.g., Bitcoin, ETH-USD)..."
+
+msgid "🚀 Аналізувати"
+msgstr "🚀 Analyze"
+
+msgid "1. Портфель"
+msgstr "1. Portfolio"
+
+msgid "Бюджет для інвестування 💰"
+msgstr "Investment Budget 💰"
+
+msgid "Введіть суму, яку плануєте інвестувати"
+msgstr "Enter the amount you plan to invest"
+
+msgid "2. Стратегія (AHP)"
+msgstr "2. Strategy (AHP)"
+
+msgid "Фактор доходу"
+msgstr "Income Factor"
+
+msgid "Результат Аналізу"
+msgstr "Analysis Result"
+
+msgid "Мій Бюджет:"
+msgstr "My Budget:"
+
+msgid "🖨️ Друкувати / PDF"
+msgstr "🖨️ Print / PDF"
+
+msgid "📊 Експорт CSV"
+msgstr "📊 Export CSV"
+
+msgid "📋 Копіювати звіт"
+msgstr "📋 Copy Report"
+
+msgid "Машина часу (Бектест 1 рік)"
+msgstr "Time Machine (1 Year Backtest)"
+
+msgid "Порівняння лідерів 🕸️"
+msgstr "Leaders Comparison 🕸️"
+
+msgid "Розподіл Бюджету 💰"
+msgstr "Budget Allocation 💰"
+
+msgid "Рекомендована доля в портфелі"
+msgstr "Recommended portfolio share"
+
+msgid "Надійність"
+msgstr "Reliability"
+
+msgid "Активність"
+msgstr "Activity"
+
+msgid "Тенденція"
+msgstr "Trend"
+
+msgid "Знижка"
+msgstr "Discount"
+
+msgid "Рівнозначно"
+msgstr "Equal"
