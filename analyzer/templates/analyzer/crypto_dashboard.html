@@ -265,6 +265,7 @@
                 <a class="nav-link fw-bold px-4 rounded-pill active shadow-sm" href="{% url 'crypto_analyze' %}">{% trans "🪙 Аналіз Крипто" %}</a>
             </li>
         </ul>
+        {% if not is_shared %}
         <form method="post" id="mainForm">
             {% csrf_token %}
             <input type="hidden" name="tickers_hidden" id="tickersHidden" value="{{ selected_tickers }}">
@@ -390,6 +391,13 @@
                 </div>
             </div>
         </form>
+        {% else %}
+        <div class="alert alert-info text-center shadow-sm mb-4">
+            <h4 class="fw-bold mb-2">🌍 Це публічний інвестиційний портфель!</h4>
+            <p>Хтось поділився з вами результатами свого аналізу.</p>
+            <a href="{% url 'crypto_analyze' %}" class="btn btn-primary px-4 rounded-pill fw-bold shadow-sm">Створити власний портфель</a>
+        </div>
+        {% endif %}
 
         {% if results %}
         <div class="row justify-content-center">
@@ -406,6 +414,9 @@
                     </div>
                     {% endif %}
                     <div class="d-flex gap-2">
+                        {% if not is_shared %}
+                         <button onclick="sharePortfolio('crypto')" class="btn btn-outline-info no-print fw-bold shadow-sm">🔗 Поділитися</button>
+                        {% endif %}
                          <button onclick="window.print()" class="btn btn-outline-secondary no-print">{% trans "🖨️ Друкувати / PDF" %}</button>
                          <button onclick="exportCSV()" class="btn btn-outline-success no-print">{% trans "📊 Експорт CSV" %}</button>
                          <button onclick="copyReport()" class="btn btn-outline-primary no-print">{% trans "📋 Копіювати звіт" %}</button>
@@ -502,10 +513,10 @@
                                 <div><small class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem;">Думка Wall Street</small><div class="fw-bold">{{ item.expert_opinion }}</div></div>
                             </div>
                             <div class="row text-center small">
-                                <div class="col-3"><span class="d-block text-muted mb-1">Market Cap</span><strong class="fs-6">{{ item.metrics_display.mcap }}</strong></div>
-                                <div class="col-3"><span class="d-block text-muted mb-1">Volume 24h</span><strong class="fs-6 text-success">{{ item.metrics_display.vol }}</strong></div>
-                                <div class="col-3"><span class="d-block text-muted mb-1">Trend 50D</span><strong class="fs-6">{{ item.metrics_display.trend }}%</strong></div>
-                                <div class="col-3 border-start" style="border-color: var(--input-border) !important;"><span class="d-block text-muted mb-1">Від Максимуму</span><strong class="fs-6 text-primary">{{ item.metrics_display.discount }}%</strong></div>
+                                <div class="col-3"><span class="d-block text-muted mb-1" data-bs-toggle="tooltip" title="Загальна ринкова капіталізація (Market Cap). Відображає розмір і стабільність активу.">Market Cap ⓘ</span><strong class="fs-6">{{ item.metrics_display.mcap }}</strong></div>
+                                <div class="col-3"><span class="d-block text-muted mb-1" data-bs-toggle="tooltip" title="Об'єм торгів за 24 години. Показує ліквідність та інтерес до активу.">Volume 24h ⓘ</span><strong class="fs-6 text-success">{{ item.metrics_display.vol }}</strong></div>
+                                <div class="col-3"><span class="d-block text-muted mb-1" data-bs-toggle="tooltip" title="Тренд за останні 50 днів. Показує поточну динаміку ціни.">Trend 50D ⓘ</span><strong class="fs-6">{{ item.metrics_display.trend }}%</strong></div>
+                                <div class="col-3 border-start" style="border-color: var(--input-border) !important;"><span class="d-block text-muted mb-1" data-bs-toggle="tooltip" title="Наскільки поточна ціна впала від історичного максимуму (ATH).">Від Максимуму ⓘ</span><strong class="fs-6 text-primary">{{ item.metrics_display.discount }}%</strong></div>
                             </div>
                         </div>
                     </div>
@@ -529,6 +540,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+
         // Onboarding logic
         if (!localStorage.getItem('onboarded_crypto')) {
             setTimeout(() => {

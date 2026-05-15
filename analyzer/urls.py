@@ -9,4 +9,6 @@ urlpatterns = [
     path('export/csv/', views.export_csv, name='export_csv'),
     path('api/create_alert/', views.create_alert, name='create_alert'),
     path('api/crypto_prices/', views.api_crypto_prices, name='api_crypto_prices'),
+    path('api/share/', views.create_shared_portfolio, name='create_shared_portfolio'),
+    path('p/<str:share_id>/', views.view_shared_portfolio, name='view_shared_portfolio'),
 ]

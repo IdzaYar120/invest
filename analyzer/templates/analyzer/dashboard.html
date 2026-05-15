@@ -252,6 +252,7 @@
                 <a class="nav-link fw-bold px-4 rounded-pill text-muted bg-white border" href="{% url 'crypto_analyze' %}">🪙 Аналіз Крипто</a>
             </li>
         </ul>
+        {% if not is_shared %}
         <form method="post" id="mainForm">
             {% csrf_token %}
             <input type="hidden" name="tickers_hidden" id="tickersHidden" value="{{ selected_tickers }}">
@@ -377,6 +378,13 @@
                 </div>
             </div>
         </form>
+        {% else %}
+        <div class="alert alert-info text-center shadow-sm mb-4">
+            <h4 class="fw-bold mb-2">🌍 Це публічний інвестиційний портфель!</h4>
+            <p>Хтось поділився з вами результатами свого аналізу.</p>
+            <a href="{% url 'analyze' %}" class="btn btn-primary px-4 rounded-pill fw-bold shadow-sm">Створити власний портфель</a>
+        </div>
+        {% endif %}
 
         {% if results %}
         <div class="row justify-content-center">
@@ -393,6 +401,9 @@
                     </div>
                     {% endif %}
                     <div class="d-flex gap-2">
+                        {% if not is_shared %}
+                         <button onclick="sharePortfolio('stock')" class="btn btn-outline-info no-print fw-bold shadow-sm">🔗 Поділитися</button>
+                        {% endif %}
                          <button type="submit" form="mainForm" formaction="{% url 'export_pdf' %}" formmethod="post" formtarget="_blank" class="btn btn-outline-danger no-print">📄 Експорт PDF</button>
                          <button onclick="window.print()" class="btn btn-outline-secondary no-print">🖨️ Друкувати</button>
                          <button onclick="exportCSV()" class="btn btn-outline-success no-print">📊 Експорт CSV</button>
@@ -606,10 +617,10 @@
                                 <div><small class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem;">Думка Wall Street</small><div class="fw-bold">{{ item.expert_opinion }}</div></div>
                             </div>
                             <div class="row text-center small">
-                                <div class="col-3"><span class="d-block text-muted mb-1">Beta</span><strong class="fs-6">{{ item.metrics_display.beta }}</strong></div>
-                                <div class="col-3"><span class="d-block text-muted mb-1">Маржа</span><strong class="fs-6 text-success">{{ item.metrics_display.profit }}%</strong></div>
-                                <div class="col-3"><span class="d-block text-muted mb-1">P/E</span><strong class="fs-6">{{ item.metrics_display.pe }}</strong></div>
-                                <div class="col-3 border-start" style="border-color: var(--input-border) !important;"><span class="d-block text-muted mb-1">Дивіденди</span><strong class="fs-6 text-primary">{{ item.metrics_display.div }}%</strong></div>
+                                <div class="col-3"><span class="d-block text-muted mb-1" data-bs-toggle="tooltip" title="Показник ризику (волатильність). < 1 — менш ризиковий за ринок, > 1 — більш ризиковий.">Beta ⓘ</span><strong class="fs-6">{{ item.metrics_display.beta }}</strong></div>
+                                <div class="col-3"><span class="d-block text-muted mb-1" data-bs-toggle="tooltip" title="Чиста маржа. Відсоток прибутку від загального доходу.">Маржа ⓘ</span><strong class="fs-6 text-success">{{ item.metrics_display.profit }}%</strong></div>
+                                <div class="col-3"><span class="d-block text-muted mb-1" data-bs-toggle="tooltip" title="Price-to-Earnings. Скільки років потрібно компанії, щоб окупити свою поточну вартість.">P/E ⓘ</span><strong class="fs-6">{{ item.metrics_display.pe }}</strong></div>
+                                <div class="col-3 border-start" style="border-color: var(--input-border) !important;"><span class="d-block text-muted mb-1" data-bs-toggle="tooltip" title="Відсоток від вартості акції, який виплачується акціонерам щорічно.">Дивіденди ⓘ</span><strong class="fs-6 text-primary">{{ item.metrics_display.div }}%</strong></div>
                             </div>
                         </div>
                     </div>
@@ -633,6 +644,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+
         // Onboarding logic
         if (!localStorage.getItem('onboarded')) {
             setTimeout(() => {
@@ -1081,6 +1098,55 @@
                     "allow_symbol_change": true,
                     "container_id": "tv_chart_container"
                 });
+            });
+        };
+
+        window.sharePortfolio = function(type) {
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳...';
+            btn.disabled = true;
+
+            const data = {
+                portfolio_type: type,
+                tickers: document.getElementById('tickersHidden') ? document.getElementById('tickersHidden').value : '{{ selected_tickers }}',
+                sliders: {
+                    risk_profit: document.querySelector('input[name="slider_rp"]') ? document.querySelector('input[name="slider_rp"]').value : {{ sliders.risk_profit|default:0 }},
+                    risk_value: document.querySelector('input[name="slider_rv"]') ? document.querySelector('input[name="slider_rv"]').value : {{ sliders.risk_value|default:0 }},
+                    profit_value: document.querySelector('input[name="slider_pv"]') ? document.querySelector('input[name="slider_pv"]').value : {{ sliders.profit_value|default:0 }},
+                    profit_div: document.querySelector('input[name="slider_pd"]') ? document.querySelector('input[name="slider_pd"]').value : {{ sliders.profit_div|default:0 }},
+                    risk_div: document.querySelector('input[name="slider_rd"]') ? document.querySelector('input[name="slider_rd"]').value : {{ sliders.risk_div|default:0 }},
+                    value_div: document.querySelector('input[name="slider_vd"]') ? document.querySelector('input[name="slider_vd"]').value : {{ sliders.value_div|default:0 }}
+                },
+                budget_amount: {{ budget_amount|default:0 }},
+                budget_currency: '{{ budget_currency|default:"USD" }}'
+            };
+
+            fetch('/api/share/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : ''
+                },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    navigator.clipboard.writeText(data.url).then(() => {
+                        btn.innerHTML = '✅ Скопійовано!';
+                        setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
+                    });
+                } else {
+                    alert('Помилка: ' + data.message);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             });
         };
     });
