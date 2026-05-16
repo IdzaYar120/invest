@@ -1149,7 +1149,26 @@
                 btn.disabled = false;
             });
         };
+
+        // Scroll to Top Logic
+        const scrollToTopBtn = document.getElementById("scrollToTopBtn");
+        if (scrollToTopBtn) {
+            window.addEventListener("scroll", () => {
+                if (window.scrollY > 300) {
+                    scrollToTopBtn.style.display = "block";
+                } else {
+                    scrollToTopBtn.style.display = "none";
+                }
+            });
+            scrollToTopBtn.addEventListener("click", () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
     });
     </script>
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTopBtn" class="btn btn-primary rounded-circle shadow no-print" title="Вгору" style="display: none; position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; z-index: 1000; font-size: 24px; line-height: 1;">
+        ↑
+    </button>
 </body>
 </html>
