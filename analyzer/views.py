@@ -3,6 +3,7 @@ from django.http import JsonResponse, HttpResponse
 from django.template.loader import render_to_string
 from .utils import InvestmentAHP
 from .models import PriceAlert
+from django.utils import timezone
 import json 
 import io
 import concurrent.futures
@@ -79,6 +80,8 @@ def analyze(request):
                 "Value": round(weights[2]*100),
                 "Div": round(weights[3]*100)
             },
+            "generation_time": timezone.localtime().strftime("%d.%m.%Y, %H:%M")
+        },
             "cr": round(cr, 2),
             "is_consistent": cr <= 0.1,
             "worst_pair": worst_pair,
