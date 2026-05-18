@@ -316,7 +316,7 @@
                 <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
                     <span class="fs-4 me-3">⚠️</span>
                     <div>
-                        <strong>Увага! Низька узгодженість (CR = {{ cr }} > 0.1)</strong><br>
+                        <strong data-bs-toggle="tooltip" title="Коефіцієнт узгодженості (Consistency Ratio). Показує, наскільки логічні ваші порівняння. Значення вище 0.1 означає, що ваші відповіді суперечать одна одній.">Увага! Низька узгодженість (CR = {{ cr }} > 0.1) ⓘ</strong><br>
                         Ваші налаштування стратегії мають логічні суперечності. 
                         {% if worst_pair %}
                         Найбільша розбіжність знайдена між параметрами: <strong>{{ worst_pair }}</strong>.
@@ -488,7 +488,7 @@
                                     <svg viewBox="0 0 120 40" class="w-100 h-100"><path d="{{ item.sparkline }}" class="sparkline {% if item.trend >= 0 %}sparkline-up{% else %}sparkline-down{% endif %}"></path></svg>
                                 </div>
                                 <div class="d-flex align-items-center gap-2 small">
-                                    <span class="text-muted">Новини:</span>
+                                    <span class="text-muted" data-bs-toggle="tooltip" title="Аналіз емоційного забарвлення останніх фінансових новин за допомогою ШІ.">Новини ⓘ:</span>
                                     <span class="fw-bold" style="color: {% if item.sentiment_score > 0 %}#10b981{% elif item.sentiment_score < 0 %}#ef4444{% else %}gray{% endif %} !important;">{{ item.sentiment_text }}</span>
                                 </div>
                             </div>
@@ -500,7 +500,7 @@
                                 </div>
                                 <br>
                                 {% endif %}
-                                <div class="mb-2 text-primary small fw-bold p-1 rounded bg-light d-inline-block border">👍 Сила: {{ item.reason }}</div>
+                                <div class="mb-2 text-primary small fw-bold p-1 rounded bg-light d-inline-block border" data-bs-toggle="tooltip" title="Основна причина, чому цей актив потрапив у топ.">👍 Сила ⓘ: {{ item.reason }}</div>
                                 <br>
                                 <button class="btn btn-sm btn-outline-secondary border rounded-pill mt-2" type="button" 
                                         data-bs-toggle="collapse" data-bs-target="#det{{ forloop.counter }}" 
