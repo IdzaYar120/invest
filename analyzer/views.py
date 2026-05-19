@@ -80,8 +80,7 @@ def analyze(request):
                 "Value": round(weights[2]*100),
                 "Div": round(weights[3]*100)
             },
-            "generation_time": timezone.localtime().strftime("%d.%m.%Y, %H:%M")
-        },
+            "generation_time": timezone.localtime().strftime("%d.%m.%Y, %H:%M"),
             "cr": round(cr, 2),
             "is_consistent": cr <= 0.1,
             "worst_pair": worst_pair,

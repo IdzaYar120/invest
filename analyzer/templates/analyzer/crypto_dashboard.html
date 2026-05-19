@@ -425,15 +425,53 @@
                 </div>
                 
                 {% if backtest %}
-                <div class="alert {% if backtest.is_profit %}alert-success{% else %}alert-danger{% endif %} d-flex align-items-center mb-4 shadow-sm border-0 no-print" role="alert">
-                    <span class="fs-2 me-3">⏳</span>
-                    <div>
-                        <h5 class="fw-bold mb-1">Машина часу (Бектест 1 рік)</h5>
-                        <p class="mb-0">
-                            Якби ви інвестували свій бюджет (<strong>${{ backtest.past_value }}</strong>) у цей портфель рік тому, 
-                            зараз би ви мали <strong class="fs-5">${{ backtest.current_value }}</strong> 
-                            (<span class="fw-bold {% if backtest.is_profit %}text-success{% else %}text-danger{% endif %}">{% if backtest.profit_pct > 0 %}+{% endif %}{{ backtest.profit_pct }}%</span>).
-                        </p>
+                <div class="custom-card p-4 mb-4 no-print shadow-sm border-0 bg-light">
+                    <h5 class="fw-bold mb-3 d-flex align-items-center">
+                        <span class="fs-4 me-2">⏳</span> Машина часу (Бектест 1 рік)
+                    </h5>
+                    <div class="row g-3">
+                        <!-- Total Return Card -->
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border bg-white h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                    <small class="text-muted text-uppercase fw-bold d-block mb-1" style="font-size: 0.75rem;">Загальний прибуток</small>
+                                    <span class="fs-3 fw-extrabold {% if backtest.is_profit %}text-success{% else %}text-danger{% endif %}" style="font-weight: 800;">
+                                        {% if backtest.profit_pct > 0 %}+{% endif %}{{ backtest.profit_pct }}%
+                                    </span>
+                                </div>
+                                <div class="mt-2 text-muted small">
+                                    Ваш бюджет <strong>${{ backtest.past_value }}</strong> перетворився б на <strong>${{ backtest.current_value }}</strong>.
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Max Drawdown Card -->
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border bg-white h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                    <small class="text-muted text-uppercase fw-bold d-block mb-1" style="font-size: 0.75rem;" data-bs-toggle="tooltip" title="Максимальний спад вартості портфеля від його локального піку за останній рік.">Максимальне просідання (Max DD) ⓘ</small>
+                                    <span class="fs-3 fw-extrabold text-danger" style="font-weight: 800;">
+                                        -{{ backtest.max_drawdown }}%
+                                    </span>
+                                </div>
+                                <div class="mt-2 text-muted small">
+                                    Найгірше тимчасове падіння вартості портфеля протягом року.
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Risk-Adjusted Sharpe Card -->
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border bg-white h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                    <small class="text-muted text-uppercase fw-bold d-block mb-1" style="font-size: 0.75rem;" data-bs-toggle="tooltip" title="Annualized Volatility (Коливання вартості) та Sharpe Ratio (Ефективність з урахуванням ризику).">Коефіцієнт Шарпа & Волатильність ⓘ</small>
+                                    <span class="fs-4 fw-extrabold text-primary" style="font-weight: 800; display: block; margin-bottom: 2px;">
+                                        Шарп: {{ backtest.sharpe_ratio }}
+                                    </span>
+                                </div>
+                                <div class="mt-2 text-muted small">
+                                    Річна волатильність становить <strong>{{ backtest.volatility }}%</strong>.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 {% endif %}

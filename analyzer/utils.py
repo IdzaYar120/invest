@@ -528,26 +528,52 @@ class InvestmentAHP:
             past_total_value = total_budget_usd
             current_total_value = 0
             
+            # Розрахунок долей/кількості одиниць кожного активу в портфелі
+            shares = {}
             for item in portfolio_results:
                 ticker = item['ticker']
-                if ticker in start_prices and ticker in end_prices:
-                    allocated = item.get('allocated_usd', 0)
-                    if start_prices[ticker] > 0:
-                        shares = allocated / start_prices[ticker]
-                        current_value = shares * end_prices[ticker]
-                        current_total_value += current_value
-                    else:
-                        current_total_value += allocated
+                allocated = item.get('allocated_usd', 0)
+                if ticker in start_prices:
+                    price = start_prices[ticker]
+                    shares[ticker] = allocated / price if price > 0 else 0.0
                 else:
-                    current_total_value += item.get('allocated_usd', 0)
-                    
+                    shares[ticker] = 0.0
+            
+            # Обчислення щоденної вартості портфеля для побудови кривої доходності
+            portfolio_values = pd.Series(0.0, index=data.index)
+            for item in portfolio_results:
+                ticker = item['ticker']
+                allocated = item.get('allocated_usd', 0)
+                if ticker in data.columns:
+                    portfolio_values += data[ticker] * shares[ticker]
+                else:
+                    portfolio_values += allocated
+            
+            # Кінцева вартість портфеля
+            current_total_value = portfolio_values.iloc[-1]
             profit_pct = ((current_total_value - past_total_value) / past_total_value) * 100 if past_total_value > 0 else 0
+            
+            # Розрахунок Максимального просідання (Max Drawdown)
+            peaks = portfolio_values.cummax()
+            drawdowns = (portfolio_values - peaks) / peaks
+            max_drawdown = drawdowns.min() * 100  # у відсотках (від'ємне значення)
+            
+            # Розрахунок річної волатильності портфеля (стандартне відхилення щоденних доходностей)
+            daily_returns = portfolio_values.pct_change().dropna()
+            volatility = daily_returns.std() * np.sqrt(252) * 100 if len(daily_returns) > 1 else 0.0
+            
+            # Розрахунок коефіцієнта Шарпа (приймаємо безризикову ставку рівною 4%)
+            annual_return = ((current_total_value - past_total_value) / past_total_value) if past_total_value > 0 else 0.0
+            sharpe_ratio = (annual_return - 0.04) / (volatility / 100) if volatility > 0 else 0.0
             
             return {
                 "past_value": round(past_total_value, 2),
                 "current_value": round(current_total_value, 2),
                 "profit_pct": round(profit_pct, 2),
-                "is_profit": profit_pct >= 0
+                "is_profit": profit_pct >= 0,
+                "max_drawdown": round(abs(max_drawdown), 2),
+                "volatility": round(volatility, 2),
+                "sharpe_ratio": round(sharpe_ratio, 2)
             }
         except Exception as e:
             print(f"Backtest Error: {e}")
