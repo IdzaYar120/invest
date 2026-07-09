@@ -879,7 +879,7 @@
             {% for item in results %}
             {% if budget_amount > 0 and item.allocated_usd %}
             let pct_{{ forloop.counter }} = Math.round(({{ item.allocated_usd }} / {{ total_budget_usd }}) * 100);
-            text += `🟢 {{ item.ticker }}: ${pct_{{ forloop.counter }}}% (${{ budget_currency == 'USD' ? '$' : '' }}{{ item.allocated_usd }})\n`;
+            text += `🟢 {{ item.ticker }}: ${pct_{{ forloop.counter }}}% (${'{{ budget_currency }}' === 'USD' ? '$' : ''}{{ item.allocated_usd }})\n`;
             {% else %}
             text += `🟢 {{ item.ticker }}: Рейтинг {{ item.score }}\n`;
             {% endif %}
