@@ -104,6 +104,4 @@ ALLOWED_HOSTS = os.environ.get(
     "localhost 127.0.0.1 .back4app.com .back4app.dev .koyeb.app"
 ).split()
 
-# Якщо Back4app все одно коверзитиме через унікальні внутрішні проксі, 
-# розкоментуй рядок нижче (прибери решітку), щоб дозволити абсолютно будь-які хости:
-# ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*']
