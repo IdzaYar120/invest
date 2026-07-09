@@ -16,10 +16,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /code/
 
-# Змінюємо порт на 8080 (стандарт для Back4app)
+# Порт для Back4app
 EXPOSE 8080
 
 RUN python manage.py collectstatic --noinput
 
-# Змінюємо порт у команді запуску на 8080
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "invest.wsgi:application"]
+# Зверни увагу: тут ми замінили invest.wsgi на invest_project.wsgi
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "invest_project.wsgi:application"]
