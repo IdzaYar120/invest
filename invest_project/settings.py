@@ -86,3 +86,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Email Testing Config (Виводить листи в консоль)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+# Дозволяємо локальні запити та будь-які піддомени huggingface.co
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.hf.space', '.huggingface.co']
