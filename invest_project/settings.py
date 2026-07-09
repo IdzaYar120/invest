@@ -19,6 +19,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  
     'whitenoise.middleware.WhiteNoiseMiddleware', # ДОДАНО: для роздачі CSS/JS на Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
