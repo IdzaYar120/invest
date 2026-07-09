@@ -70,7 +70,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Локалізація та Часовий пояс (Виправлено на правильний Europe/Kyiv)
+# Локалізація та Часовий пояс (Офіційний Europe/Kyiv)
 LANGUAGE_CODE = 'uk'
 TIME_ZONE = 'Europe/Kyiv'
 USE_I18N = True
@@ -97,11 +97,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Email Testing Config (Виводить листи в консоль контейнера)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# НАЛАШТУВАННЯ ДОЗВОЛЕНИХ ХОСТІВ (Фінальне рішення для Back4app, Koyeb та Local)
-# Платформа зможе передавати свій домен через змінну оточення, або підтягнуться стандартні
-ALLOWED_HOSTS = os.environ.get(
-    "DJANGO_ALLOWED_HOSTS", 
-    "localhost 127.0.0.1 .back4app.com .back4app.dev .koyeb.app"
-).split()
-
+# НАЛАШТУВАННЯ ДОЗВОЛЕНИХ ХОСТІВ
+# Дозволяємо абсолютно всі хости для стабільного проходження Health Check на Back4app
 ALLOWED_HOSTS = ['*']
