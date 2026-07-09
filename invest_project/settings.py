@@ -87,4 +87,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Дозволяємо локальні запити та будь-які піддомени huggingface.co
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.hf.space', '.huggingface.co']
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost 127.0.0.1 .koyeb.app").split()
