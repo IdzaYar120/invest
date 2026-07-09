@@ -1,12 +1,16 @@
 from pathlib import Path
 import os
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-dev-key-recreate-me'
+
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
-
+# Базовий список додатків
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -17,10 +21,10 @@ INSTALLED_APPS = [
     'analyzer',
 ]
 
+# Налаштування Middleware (Очищено від дублів WhiteNoise)
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  
-    'whitenoise.middleware.WhiteNoiseMiddleware', # ДОДАНО: для роздачі CSS/JS на Render
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Для роздачі статики в продакшені
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -50,6 +54,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'invest_project.wsgi.application'
 
+# База даних (SQLite3)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -57,6 +62,7 @@ DATABASES = {
     }
 }
 
+# Валідація паролів
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -64,6 +70,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# Локалізація та Часовий пояс (Виправлено на правильний Europe/Kyiv)
 LANGUAGE_CODE = 'uk'
 TIME_ZONE = 'Europe/Kyiv'
 USE_I18N = True
@@ -78,16 +85,25 @@ LOCALE_PATHS = [
     os.path.join(BASE_DIR, 'locale'),
 ]
 
+# Статичні файли (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
-# ДОДАНО: Папка, куди збиратимуться статичні файли при деплої
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') 
 
+# Зберігання статики через WhiteNoise із оптимізацією
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Email Testing Config (Виводить листи в консоль)
+# Email Testing Config (Виводить листи в консоль контейнера)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# Дозволяємо локальні запити та будь-які піддомени huggingface.co
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost 127.0.0.1 .koyeb.app").split()
+# НАЛАШТУВАННЯ ДОЗВОЛЕНИХ ХОСТІВ (Фінальне рішення для Back4app, Koyeb та Local)
+# Платформа зможе передавати свій домен через змінну оточення, або підтягнуться стандартні
+ALLOWED_HOSTS = os.environ.get(
+    "DJANGO_ALLOWED_HOSTS", 
+    "localhost 127.0.0.1 .back4app.com .back4app.dev .koyeb.app"
+).split()
+
+# Якщо Back4app все одно коверзитиме через унікальні внутрішні проксі, 
+# розкоментуй рядок нижче (прибери решітку), щоб дозволити абсолютно будь-які хости:
+# ALLOWED_HOSTS = ['*']
